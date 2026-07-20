@@ -1,13 +1,11 @@
 #include "Assembly.h"
 
 void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& material, Geometry& geometry, Cel_Data& cel, Rep_Data rep, Sur_Data sur) {
-	assembly.index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
-
 	assembly.total_size = geometry.size_i * geometry.size_j * geometry.size_k;
 	assembly.distribution.assign(assembly.total_size, geometry.default_cell);
 
-	const int center_i = geometry.size_i/2 +1;
-	const int center_j = geometry.size_j/2 +1;
+	const int center_i = geometry.size_i/2;
+	const int center_j = geometry.size_j/2;
 
 	for (const auto& rep : geometry.replace_cells) {
 		int change_cell_id = rep.id;
@@ -39,25 +37,9 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 			}
 		}
 	}
-	cel.id = assembly.distribution[assembly.index];
 }
 
-double Forming::evaluate_surface(double lcoal_x, double local_y, double local_z, const Sur_Data& sur) const {
-	if (sur.type == "CZ") {
-		double r = sur.coefficient[0];
-			return (lcoal_x * lcoal_x + local_y * local_y) - (r * r);
-	}
-	else if (sur.type == "PX") {
-		double c = sur.coefficient[0];
-			return lcoal_x - c;
-	}
-	else if (sur.type == "PY") {
-		double c = sur.coefficient[0];
-			return local_y - c;
-	}
-	else if (sur.type == "PZ") {
-		double c = sur.coefficient[0];
-			return local_z - c;
-	}
-	return 0.0;
+double Forming::evaluate_surface(double lcoal_x, double local_y, double local_z, int current_cell_id, const Geometry& geometry) const {
+	geometry.surfaces
 }//if value is 0?
+//switch 문!1

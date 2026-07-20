@@ -12,6 +12,7 @@ public:
 	double local_x = 0.0, local_y = 0.0, local_z = 0.0;
 	int group = 0;
 	double weight = 0.0;
+	int current_index = 0;
 	int current_cel_id = 0;
 
 	double DTC = 0.0;
@@ -40,6 +41,7 @@ private:
 	std::queue<Neutron> next_bank;
 
 	lcg rn = lcg(123456789ULL);
+	Neutron neutron;
 	Material material;
 	Geometry geometry;
 	Factory factory;

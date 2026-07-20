@@ -14,12 +14,15 @@ void Factory::ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& g
 	coord.k = (neutron.z + geometry.pitch_k * geometry.size_k / 2 ) / geometry.pitch_k;
 
 	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
-	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);
+	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);  ///distance에 넣어야 할 수도!!
 	neutron.center_z = geometry.pitch_k * (0.5 + coord.k);
 
 	neutron.local_x = neutron.x - neutron.center_x;
 	neutron.local_y = neutron.y - neutron.center_y;
 	neutron.local_z = neutron.z - neutron.center_z;
+
+	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
+	neutron.current_cel_id = assembly.distribution[neutron.current_index];
 }
 
 void Factory::ini_dir(lcg& rn, Neutron& neutron) {
@@ -96,3 +99,33 @@ void Manager::initialize() {
 
 	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
 }
+
+void Manager::cycle() {
+	Method method;
+
+	for (int i = 0; i < NPS; ++i) {
+		if (current_bank.empty()) {
+			factory.ini_pos(rn, neutron, assembly, geometry, coord);
+			neutron.group = 0;
+		}
+		else {
+			neutron = current_bank.front();
+			current_bank.pop();
+		}
+		factory.ini_dir(rn, neutron);
+		bool loop_active = true;
+
+		while (loop_active) {
+			
+			distance.distance(rn, neutron, material, geometry, assembly);
+
+			if (neutron.DTC < neutron.DTS) {
+
+			}
+		}
+
+	}
+}
+
+
+//비교문 최소화
