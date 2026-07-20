@@ -42,13 +42,6 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 	cel.id = assembly.distribution[assembly.index];
 }
 
-void Forming::coordinate_forming(Assembly& assembly, Coord& coord, Material& material, Geometry& geometry, Cel_Data& cel, Rep_Data rep, Sur_Data sur) {
-	assembly.cen_z = geometry.pitch_k * (coord.k - ((assembly.total_size / 2) / (geometry.size_i * geometry.size_j)));
-	assembly.cen_y = geometry.pitch_j * (coord.j - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j)))/ geometry.size_i);
-	assembly.cen_x = geometry.pitch_i * (coord.i - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) % geometry.size_i);
-	// conversion of coord(i, j, k) to center Cartesian(x, y, z)
-}
-
 double Forming::evaluate_surface(double lcoal_x, double local_y, double local_z, const Sur_Data& sur) const {
 	if (sur.type == "CZ") {
 		double r = sur.coefficient[0];

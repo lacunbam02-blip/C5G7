@@ -9,14 +9,5 @@ int main() {
 	Mat_Data mat_data;
 	Material material;
 	Geometry geometry;
-
-	Parsing parsing;
-
-	parsing.parsing("2D7G_Mat_Input.txt", material, geometry);
-
-	Forming forming;
-
-	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
-	forming.coordinate_forming(assembly, coord, material, geometry, cel, rep, sur);
 }
 

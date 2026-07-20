@@ -7,9 +7,6 @@ public:
 	int index = 0;
 	int total_size = 0;
 
-	double cen_x= 0.0;
-	double cen_y = 0.0;
-	double cen_z = 0.0;
 };
 
 class Forming {

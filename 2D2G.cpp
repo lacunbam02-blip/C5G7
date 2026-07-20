@@ -3,15 +3,23 @@
 #include "lcg2.h"
 #include "2D7G.h"
 
-void Factory::ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry) {
+void Factory::ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry, Coord& coord) {
 	Method method;
 	neutron.x = method.next(rn) * geometry.pitch_i * geometry.size_i / 2;
 	neutron.y = method.next(rn) * geometry.pitch_j * geometry.size_j / 2;
 	neutron.z = method.next(rn) * geometry.pitch_k * geometry.size_k / 2;
 
-	neutron.local_x = neutron.x - assembly.cen_x;
-	neutron.local_y = neutron.y - assembly.cen_y;
-	neutron.local_z = neutron.z - assembly.cen_z;
+	coord.i = neutron.x / geometry.pitch_i - 1;
+	coord.j = neutron.y / geometry.pitch_j - 1;
+	coord.k = neutron.z / geometry.pitch_k - 1;
+
+	neutron.center_z = geometry.pitch_k * (coord.k - ((assembly.total_size / 2) / (geometry.size_i * geometry.size_j)));
+	neutron.center_y = geometry.pitch_j * (coord.j - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) / geometry.size_i);
+	neutron.center_x = geometry.pitch_i* (coord.i - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) % geometry.size_i);
+
+	neutron.local_x = neutron.x - neutron.center_x;
+	neutron.local_y = neutron.y - neutron.center_y;
+	neutron.local_z = neutron.z - neutron.center_z;
 }
 
 void Factory::ini_dir(lcg& rn, Neutron& neutron) {
@@ -39,14 +47,16 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	// current location (i, j, k) or (x, y, z) -> use index and cel.id
 	if (geometry.cells[neutron.current_cel_id].material_id == 0 || geometry.cells[neutron.current_cel_id].material_id == 2 || geometry.cells[neutron.current_cel_id].material_id == 3) {
 		double dts_w = 0.0;
+		double dts_r = 0.0;
 		if (neutron.w > 0) dts_w = (geometry.pitch_k / 2 - neutron.local_z) / neutron.w;
 		else if (neutron.w < 0) dts_w = (-1 * geometry.pitch_k / 2 - neutron.local_z) / neutron.w;
 		else dts_w = 1e30;
 
 		double a = -neutron.u * neutron.local_x - neutron.v * neutron.local_y;
-		double b = neutron.u * neutron.local_x + neutron.v * neutron.local_y - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
+		double b = (neutron.u * neutron.local_x + neutron.v * neutron.local_y) * (neutron.u * neutron.local_x + neutron.v * neutron.local_y) - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
 		double c = neutron.u * neutron.u + neutron.v + neutron.v;
-		double dts_r = (a + sqrt(b)) / c;
+		if (b > 0) dts_r = (a + sqrt(b)) / c;
+		else dts_r = 1e30;
 
 		neutron.DTS = std::min({ dts_w, dts_r });
 	}
@@ -54,6 +64,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 		double dts_u = 0.0;
 		double dts_v = 0.0;
 		double dts_w = 0.0;
+		double dts_r = 0.0;
 		if (neutron.u > 0) dts_u = (geometry.pitch_i / 2 - neutron.local_x) / neutron.u;
 		else if (neutron.u < 0) dts_u = (-1 * geometry.pitch_i / 2 - neutron.local_x) / neutron.u;
 		else dts_u = 1e30;
@@ -67,10 +78,22 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 		else dts_w = 1e30;
 
 		double a = -neutron.u * neutron.local_x - neutron.v * neutron.local_y;
-		double b = neutron.u * neutron.local_x + neutron.v * neutron.local_y - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
+		double b = (neutron.u * neutron.local_x + neutron.v * neutron.local_y) * (neutron.u * neutron.local_x + neutron.v * neutron.local_y) - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
 		double c = neutron.u * neutron.u + neutron.v + neutron.v;
-		double dts_r = (a + sqrt(b)) / c;
+		if (b > 0) dts_r = (a + sqrt(b)) / c;
+		else dts_r = 1e30;
 
 		neutron.DTS = std::min({ dts_u, dts_v, dts_w, dts_r });
 	}
+}
+
+void Manager::initialize() {
+	Parsing parsing;
+
+	parsing.parsing("2D7G_Mat_Input.txt", material, geometry);
+
+	Forming forming;
+
+	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
+	forming.coordinate_forming(assembly, coord, material, geometry, cel, rep, sur);
 }

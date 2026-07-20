@@ -8,6 +8,7 @@ struct Neutron {
 public:
 	double x = 0.0, y = 0.0, z = 0.0;
 	double u = 0.0, v = 0.0, w = 0.0;
+	double center_x = 0.0, center_y = 0.0, center_z = 0.0;
 	double local_x = 0.0, local_y = 0.0, local_z = 0.0;
 	int group = 0;
 	double weight = 0.0;
@@ -19,7 +20,7 @@ public:
 
 class Factory {
 public:
-	void ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry);
+	void ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry, Coord& coord);
 	void ini_dir(lcg& rn, Neutron& neutron);
 };
 
