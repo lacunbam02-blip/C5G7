@@ -6,8 +6,8 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 	assembly.total_size = geometry.size_i * geometry.size_j * geometry.size_k;
 	assembly.distribution.assign(assembly.total_size, geometry.default_cell);
 
-	const int center_i = 8;
-	const int center_j = 8;
+	const int center_i = geometry.size_i/2 +1;
+	const int center_j = geometry.size_j/2 +1;
 
 	for (const auto& rep : geometry.replace_cells) {
 		int change_cell_id = rep.id;

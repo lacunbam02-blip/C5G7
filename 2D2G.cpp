@@ -5,17 +5,17 @@
 
 void Factory::ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry, Coord& coord) {
 	Method method;
-	neutron.x = method.next(rn) * geometry.pitch_i * geometry.size_i / 2;
-	neutron.y = method.next(rn) * geometry.pitch_j * geometry.size_j / 2;
-	neutron.z = method.next(rn) * geometry.pitch_k * geometry.size_k / 2;
+	neutron.x = method.next(rn) * geometry.pitch_i * geometry.size_i - geometry.pitch_i * geometry.size_i / 2;
+	neutron.y = method.next(rn) * geometry.pitch_j * geometry.size_j - geometry.pitch_j * geometry.size_j / 2;
+	neutron.z = method.next(rn) * geometry.pitch_k * geometry.size_k - geometry.pitch_k * geometry.size_k / 2;
 
-	coord.i = neutron.x / geometry.pitch_i - 1;
-	coord.j = neutron.y / geometry.pitch_j - 1;
-	coord.k = neutron.z / geometry.pitch_k - 1;
+	coord.i = (neutron.x + geometry.pitch_i * geometry.size_i / 2 ) / geometry.pitch_i;
+	coord.j = (neutron.y + geometry.pitch_j * geometry.size_j / 2 ) / geometry.pitch_j;
+	coord.k = (neutron.z + geometry.pitch_k * geometry.size_k / 2 ) / geometry.pitch_k;
 
-	neutron.center_z = geometry.pitch_k * (coord.k - ((assembly.total_size / 2) / (geometry.size_i * geometry.size_j)));
-	neutron.center_y = geometry.pitch_j * (coord.j - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) / geometry.size_i);
-	neutron.center_x = geometry.pitch_i* (coord.i - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) % geometry.size_i);
+	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
+	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);
+	neutron.center_z = geometry.pitch_k * (0.5 + coord.k);
 
 	neutron.local_x = neutron.x - neutron.center_x;
 	neutron.local_y = neutron.y - neutron.center_y;
@@ -54,8 +54,8 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 		double a = -neutron.u * neutron.local_x - neutron.v * neutron.local_y;
 		double b = (neutron.u * neutron.local_x + neutron.v * neutron.local_y) * (neutron.u * neutron.local_x + neutron.v * neutron.local_y) - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
-		double c = neutron.u * neutron.u + neutron.v + neutron.v;
-		if (b > 0) dts_r = (a + sqrt(b)) / c;
+		double c = neutron.u * neutron.u + neutron.v * neutron.v;
+		if (b > 0 && c != 0) dts_r = (a + sqrt(b)) / c;
 		else dts_r = 1e30;
 
 		neutron.DTS = std::min({ dts_w, dts_r });
@@ -79,8 +79,8 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 		double a = -neutron.u * neutron.local_x - neutron.v * neutron.local_y;
 		double b = (neutron.u * neutron.local_x + neutron.v * neutron.local_y) * (neutron.u * neutron.local_x + neutron.v * neutron.local_y) - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
-		double c = neutron.u * neutron.u + neutron.v + neutron.v;
-		if (b > 0) dts_r = (a + sqrt(b)) / c;
+		double c = neutron.u * neutron.u + neutron.v * neutron.v;
+		if (b > 0 && c != 0) dts_r = (a - sqrt(b)) / c;
 		else dts_r = 1e30;
 
 		neutron.DTS = std::min({ dts_u, dts_v, dts_w, dts_r });
@@ -95,5 +95,4 @@ void Manager::initialize() {
 	Forming forming;
 
 	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
-	forming.coordinate_forming(assembly, coord, material, geometry, cel, rep, sur);
 }

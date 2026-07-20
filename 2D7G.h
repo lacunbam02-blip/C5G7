@@ -39,12 +39,16 @@ private:
 	std::queue<Neutron> current_bank;
 	std::queue<Neutron> next_bank;
 
-	lcg rn;
+	lcg rn = lcg(123456789ULL);
 	Material material;
 	Geometry geometry;
 	Factory factory;
 	Distance distance;
 	Assembly assembly;
+	Coord coord;
+	Cel_Data cel;
+	Rep_Data rep;
+	Sur_Data sur;
 
 public:
 	void initialize();

@@ -38,9 +38,9 @@ struct Cel_Data {
 };
 
 struct Coord {
-	int i;
-	int j;
-	int k;
+	int i = 0;
+	int j = 0;
+	int k = 0;
 };
 
 struct Rep_Data {
