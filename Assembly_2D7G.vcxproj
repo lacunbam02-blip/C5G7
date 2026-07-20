@@ -145,7 +145,7 @@
     <ClInclude Include="lcg2.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="2D7G.cpp" />
+    <ClCompile Include="2D2G.cpp" />
     <ClCompile Include="Assembly.cpp" />
     <ClCompile Include="lcg2.cpp" />
     <ClCompile Include="main.cpp" />

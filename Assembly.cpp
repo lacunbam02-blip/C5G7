@@ -6,9 +6,6 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 	assembly.total_size = geometry.size_i * geometry.size_j * geometry.size_k;
 	assembly.distribution.assign(assembly.total_size, geometry.default_cell);
 
-
-
-
 	const int center_i = 8;
 	const int center_j = 8;
 
@@ -50,5 +47,24 @@ void Forming::coordinate_forming(Assembly& assembly, Coord& coord, Material& mat
 	assembly.cen_y = geometry.pitch_j * (coord.j - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j)))/ geometry.size_i);
 	assembly.cen_x = geometry.pitch_i * (coord.i - (((assembly.total_size / 2) % (geometry.size_i * geometry.size_j))) % geometry.size_i);
 	// conversion of coord(i, j, k) to center Cartesian(x, y, z)
-	d
 }
+
+double Forming::evaluate_surface(double lcoal_x, double local_y, double local_z, const Sur_Data& sur) const {
+	if (sur.type == "CZ") {
+		double r = sur.coefficient[0];
+			return (lcoal_x * lcoal_x + local_y * local_y) - (r * r);
+	}
+	else if (sur.type == "PX") {
+		double c = sur.coefficient[0];
+			return lcoal_x - c;
+	}
+	else if (sur.type == "PY") {
+		double c = sur.coefficient[0];
+			return local_y - c;
+	}
+	else if (sur.type == "PZ") {
+		double c = sur.coefficient[0];
+			return local_z - c;
+	}
+	return 0.0;
+}//if value is 0?

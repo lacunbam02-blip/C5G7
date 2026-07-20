@@ -59,6 +59,7 @@ public:
 	int size_j = 0;
 	int size_k = 0;
 
+	double pitch_r = 0.0;
 	double pitch_i = 0.0;
 	double pitch_j = 0.0;
 	double pitch_k = 0.0;

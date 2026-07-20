@@ -41,6 +41,7 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 			input_file >> var;
 			sur.coefficient.push_back(var);
 
+			if (sur.type == "CZ" && sur.coefficient.back() > 0) geometry.pitch_r = sur.coefficient.back();
 			if (sur.type == "PX" && sur.coefficient.back() > 0) geometry.pitch_i = 2 * sur.coefficient.back();
 			if (sur.type == "PY" && sur.coefficient.back() > 0) geometry.pitch_j = 2 * sur.coefficient.back();
 			if (sur.type == "PZ" && sur.coefficient.back() > 0) geometry.pitch_k = 2 * sur.coefficient.back();
@@ -88,7 +89,6 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 
 				coord.i = coord.i - 1;
 				coord.j = coord.j - 1;
-				coord.k = coord.k - 1;
 
 				rep.replace_cell.push_back(coord);
 			}
