@@ -4,7 +4,12 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 	std::ifstream input_file(filename);
 
 	std::string word;
-	while (input_file >> word) {
+
+	bool skip_read = false; //check
+
+	while (skip_read || input_file >> word) {   //check
+		skip_read = false; //check
+
 		if (word[0] == '#') continue;
 		if (word == "Material") {
 			Mat_Data mat;
@@ -54,8 +59,9 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 
 			std::string next_word;
 			while (input_file >> next_word) {
-				if (next_word[0] == 'C' || next_word == "size") {
+				if (next_word[0] == 'C' || next_word == "size" || next_word == "Size") {
 					word = next_word;
+					skip_read = true;  //check
 					break;
 				}
 
@@ -85,6 +91,7 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 			while (input_file >> position_word) {
 				if (position_word[0] != '[') {
 					word = position_word;
+					skip_read = true; //check
 					break;
 				}
 

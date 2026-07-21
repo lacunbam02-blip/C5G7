@@ -35,9 +35,18 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	int calc_j = static_cast<int>((neutron.y + geometry.pitch_j * geometry.size_j / 2) / geometry.pitch_j);
 	int calc_k = static_cast<int>((neutron.z + geometry.pitch_k * geometry.size_k / 2) / geometry.pitch_k);
 
+	if (calc_i >= geometry.size_i) calc_i = geometry.size_i - 1;
+	else if (calc_i < 0) calc_i = 0;
+
+	if (calc_j >= geometry.size_j) calc_j = geometry.size_j - 1;
+	else if (calc_j < 0) calc_j = 0;
+
+	if (calc_k >= geometry.size_k) calc_k = geometry.size_k - 1;
+	else if (calc_k < 0) calc_k = 0;
+
 	coord.i = std::max(0, std::min(calc_i, geometry.size_i - 1));
 	coord.j = std::max(0, std::min(calc_j, geometry.size_j - 1));
-	coord.k = std::max(0, std::min(calc_k, geometry.size_k - 1));
+	coord.k = std::max(0, std::min(calc_k, geometry.size_k - 1));   //check
 
 	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
 	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);
@@ -71,6 +80,9 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 		else if (neutron.w < 0) dts_w = (-1 * geometry.pitch_k / 2 - neutron.local_z) / neutron.w;
 		else dts_w = 1e30;
 
+		if (dts_w < 1e-9) dts_w = 1e30; //check
+
+
 		double a = -neutron.u * neutron.local_x - neutron.v * neutron.local_y;
 		double b = (neutron.u * neutron.local_x + neutron.v * neutron.local_y) * (neutron.u * neutron.local_x + neutron.v * neutron.local_y) - (neutron.local_x * neutron.local_x + neutron.local_y * neutron.local_y - geometry.pitch_r * geometry.pitch_r) * (neutron.u * neutron.u + neutron.v * neutron.v);
 		double c = neutron.u * neutron.u + neutron.v * neutron.v;
@@ -84,6 +96,13 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 		double dts_v = 0.0;
 		double dts_w = 0.0;
 		double dts_r = 0.0;
+
+
+		if (dts_u < 1e-9) dts_u = 1e30; //check
+		if (dts_v < 1e-9) dts_v = 1e30;
+		if (dts_w < 1e-9) dts_w = 1e30;
+
+
 		if (neutron.u > 0) dts_u = (geometry.pitch_i / 2 - neutron.local_x) / neutron.u;
 		else if (neutron.u < 0) dts_u = (-1 * geometry.pitch_i / 2 - neutron.local_x) / neutron.u;
 		else dts_u = 1e30;
