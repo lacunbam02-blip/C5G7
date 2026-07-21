@@ -2,6 +2,7 @@
 #include "Parsing.h"
 #include "lcg2.h"
 #include "2D7G.h"
+#include <algorithm>
 
 void Factory::ini_pos(lcg& rn, Neutron& neutron, Geometry& geometry) {
 	Method method;
@@ -30,12 +31,16 @@ void Factory::ini_dir(lcg& rn, Neutron& neutron) {
 
 void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly, Forming& forming, Coord& coord) {
 	
-	coord.i = (neutron.x + geometry.pitch_i * geometry.size_i / 2) / geometry.pitch_i;
-	coord.j = (neutron.y + geometry.pitch_j * geometry.size_j / 2) / geometry.pitch_j;
-	coord.k = (neutron.z + geometry.pitch_k * geometry.size_k / 2) / geometry.pitch_k;
+	int calc_i = static_cast<int>((neutron.x + geometry.pitch_i * geometry.size_i / 2) / geometry.pitch_i);
+	int calc_j = static_cast<int>((neutron.y + geometry.pitch_j * geometry.size_j / 2) / geometry.pitch_j);
+	int calc_k = static_cast<int>((neutron.z + geometry.pitch_k * geometry.size_k / 2) / geometry.pitch_k);
+
+	coord.i = std::max(0, std::min(calc_i, geometry.size_i - 1));
+	coord.j = std::max(0, std::min(calc_j, geometry.size_j - 1));
+	coord.k = std::max(0, std::min(calc_k, geometry.size_k - 1));
 
 	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
-	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);  ///distance에 넣어야 할 수도!!
+	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);
 	neutron.center_z = geometry.pitch_k * (0.5 + coord.k);
 
 	neutron.local_x = neutron.x - neutron.center_x;
@@ -131,6 +136,11 @@ void Manager::cycle() {
 			
 			distance.distance(rn, neutron, material, geometry, assembly, forming, coord);
 
+			if (neutron.current_material == -1) {
+				loop_active = false;
+				continue;
+			}
+
 			if (neutron.DTC < neutron.DTS) {
 				double r = method.next(rn) * material.materials[neutron.current_material].xs_t[neutron.group];
 				double sum_scattering = std::accumulate(material.materials[neutron.current_material].xs_s.begin() + neutron.group * 7, material.materials[neutron.current_material].xs_s.begin() + (neutron.group * 7 + 7), 0.0);
@@ -161,7 +171,7 @@ void Manager::cycle() {
 					neutron.y = neutron.y + neutron.v * neutron.DTC;
 					neutron.z = neutron.z + neutron.w * neutron.DTC;
 
-					tally_sum = material.materials[neutron.current_material].nu[neutron.group] * material.materials[neutron.current_material].xs_f[neutron.group] / material.materials[neutron.current_material].xs_t[neutron.group];
+					tally_sum += material.materials[neutron.current_material].nu[neutron.group] * material.materials[neutron.current_material].xs_f[neutron.group] / material.materials[neutron.current_material].xs_t[neutron.group];
 					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] *
 						material.materials[neutron.current_material].xs_f[neutron.group] / material.materials[neutron.current_material].xs_t[neutron.group]
 						/ k + method.next(rn));
@@ -210,7 +220,6 @@ void Manager::cycle() {
 }
 
 void Manager::iteration() {
-	Method method;
 
 	double preceed_k = 0.0;
 	int inactive_cycles = 50;
@@ -218,8 +227,12 @@ void Manager::iteration() {
 	double active_k_sq_sum = 0.0;
 	int active_count = 0;
 
+	current_NPS = NPS;
+
 	for (int i = 0; i < total_cycles; ++i) {
 		generation_bank_count = 0.0;
+		tally_sum = 0.0;
+
 		cycle();
 
 		preceed_k = k;
@@ -246,6 +259,3 @@ void Manager::iteration() {
 		std::cout << avg_k << " ± " << std_dev << "\n";
 	}
 }
-
-
-//비교문 최소화

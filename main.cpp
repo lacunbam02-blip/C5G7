@@ -6,8 +6,8 @@
 int main() {
 	Manager manager;
 
-	Mat_Data mat_data;
-	Material material;
-	Geometry geometry;
+	manager.initialize();
+	manager.iteration();
+	return 0;
 }
 

@@ -104,4 +104,3 @@ int Forming::determine_material(double local_x, double local_y, double local_z, 
 }
 
 //if value is 0?
-//switch 문!1
