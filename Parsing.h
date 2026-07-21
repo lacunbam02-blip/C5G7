@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <numeric>
 
 struct Mat_Data {
 public:
@@ -22,7 +23,6 @@ public:
 	std::vector<Mat_Data> materials;
 };
 
-
 //
 
 struct Sur_Data {
@@ -31,10 +31,14 @@ struct Sur_Data {
 	std::vector<double> coefficient;
 };
 
-struct Cel_Data {
-	int id = 0;
+struct Sub_Cell {
 	int material_id = 0;
 	std::vector<int> boundary_condition;
+};
+
+struct Cel_Data {
+	int id = 0;
+	std::vector<Sub_Cell> sub_cells;
 };
 
 struct Coord {
@@ -66,7 +70,6 @@ public:
 
 	std::vector<Rep_Data> replace_cells;
 };
-
 
 //
 

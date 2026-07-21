@@ -58,15 +58,18 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 					word = next_word;
 					break;
 				}
-				cel.material_id = std::stoi(next_word);    // use (std::stoi) instead (static_cast)
+
+				Sub_Cell sub_cell;
+				sub_cell.material_id = std::stoi(next_word);    // use (std::stoi) instead (static_cast)
 
 				std::string condition_word;
 				while (input_file >> condition_word) {
 					if (condition_word == "/") break;
-					cel.boundary_condition.push_back(std::stoi(condition_word));
+					sub_cell.boundary_condition.push_back(std::stoi(condition_word));
 				}
-				geometry.cells.push_back(cel);
+				cel.sub_cells.push_back(sub_cell);
 			}
+			geometry.cells.push_back(cel);
 		}
 		if (word == "Size") {
 			input_file >> geometry.size_i;
@@ -84,13 +87,14 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 					word = position_word;
 					break;
 				}
+
 				Coord coord;
-				sscanf(position_word.c_str(), "[%d, %d]", &coord.i, &coord.j);
 
-				coord.i = coord.i - 1;
-				coord.j = coord.j - 1;
-
-				rep.replace_cell.push_back(coord);
+				if (sscanf_s(position_word.c_str(), "[%d,%d]", &coord.i, &coord.j) == 2) {
+					coord.i = coord.i - 1;
+					coord.j = coord.j - 1;
+					rep.replace_cell.push_back(coord);
+				}
 			}
 			geometry.replace_cells.push_back(rep);
 		}

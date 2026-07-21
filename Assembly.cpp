@@ -39,7 +39,69 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 	}
 }
 
-double Forming::evaluate_surface(double lcoal_x, double local_y, double local_z, int current_cell_id, const Geometry& geometry) const {
-	geometry.surfaces
-}//if value is 0?
+double Forming::evaluate_surface(double local_x, double local_y, double local_z, Sur_Data& sur) const {
+	double value = 0.0;
+
+	if (sur.type == "CZ") {
+		value = (local_x * local_x) + (local_y * local_y) - (sur.coefficient[0] * sur.coefficient[0]);
+	}
+	else if (sur.type == "PX") {
+		value = local_x - sur.coefficient[0];
+	}
+	else if (sur.type == "PY") {
+		value = local_y - sur.coefficient[0];
+	}
+	else if (sur.type == "PZ") {
+		value = local_z - sur.coefficient[0];
+	}
+	if (std::abs(value) < 1e-9) {
+		value = 0.0;
+	}
+
+	return value;
+}
+
+int Forming::determine_material(double local_x, double local_y, double local_z, int current_cell_id, const Geometry& geometry) const {
+	for (const auto& cel : geometry.cells) {
+		if (cel.id != current_cell_id) {     // find 'cell id' in cells vector
+			continue;
+		}
+
+		for (const auto& sub : cel.sub_cells) {
+			bool is_inside = true;            // asumption that neutron is in material
+
+			for (int bc : sub.boundary_condition) {
+				int sur_id = std::abs(bc);
+				int sense = (bc > 0) ? 1 : -1;
+
+				Sur_Data target_sur;
+				for (const auto& s : geometry.surfaces) {
+					if (s.id == sur_id) {
+						target_sur = s;
+						break;
+					}
+				}
+
+				double val = evaluate_surface(local_x, local_y, local_z, target_sur);
+
+				if (sense > 0 && val < 0.0) {
+					is_inside = false;
+					break;
+				}
+				else if (sense < 0 && val > 0.0) {
+					is_inside = false;
+					break;
+				}
+			}
+
+			if (is_inside) {
+				return sub.material_id;
+			}
+		}
+		break;
+	}
+	return -1;
+}
+
+//if value is 0?
 //switch 문!1

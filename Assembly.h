@@ -12,5 +12,6 @@ public:
 class Forming {
 public:
 	void distribution_forming(Assembly& assembly, Coord& coord, Material& material, Geometry& geometry, Cel_Data& cel, Rep_Data rep, Sur_Data sur);
-	double evaluate_surface(double lcoal_x, double local_y, double local_z, const Geometry& geometry) const;
+	double evaluate_surface(double local_x, double local_y, double local_z, Sur_Data& sur) const;
+	int determine_material(double local_x, double local_y, double local_z, int current_cell_id, const Geometry& geometry) const;
 };

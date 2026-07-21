@@ -3,26 +3,11 @@
 #include "lcg2.h"
 #include "2D7G.h"
 
-void Factory::ini_pos(lcg& rn, Neutron& neutron, Assembly& assembly, Geometry& geometry, Coord& coord) {
+void Factory::ini_pos(lcg& rn, Neutron& neutron, Geometry& geometry) {
 	Method method;
 	neutron.x = method.next(rn) * geometry.pitch_i * geometry.size_i - geometry.pitch_i * geometry.size_i / 2;
 	neutron.y = method.next(rn) * geometry.pitch_j * geometry.size_j - geometry.pitch_j * geometry.size_j / 2;
 	neutron.z = method.next(rn) * geometry.pitch_k * geometry.size_k - geometry.pitch_k * geometry.size_k / 2;
-
-	coord.i = (neutron.x + geometry.pitch_i * geometry.size_i / 2 ) / geometry.pitch_i;
-	coord.j = (neutron.y + geometry.pitch_j * geometry.size_j / 2 ) / geometry.pitch_j;
-	coord.k = (neutron.z + geometry.pitch_k * geometry.size_k / 2 ) / geometry.pitch_k;
-
-	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
-	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);  ///distance에 넣어야 할 수도!!
-	neutron.center_z = geometry.pitch_k * (0.5 + coord.k);
-
-	neutron.local_x = neutron.x - neutron.center_x;
-	neutron.local_y = neutron.y - neutron.center_y;
-	neutron.local_z = neutron.z - neutron.center_z;
-
-	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
-	neutron.current_cel_id = assembly.distribution[neutron.current_index];
 }
 
 void Factory::ini_dir(lcg& rn, Neutron& neutron) {
@@ -43,12 +28,38 @@ void Factory::ini_dir(lcg& rn, Neutron& neutron) {
 
 
 
-void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly) {
+void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly, Forming& forming, Coord& coord) {
+	
+	coord.i = (neutron.x + geometry.pitch_i * geometry.size_i / 2) / geometry.pitch_i;
+	coord.j = (neutron.y + geometry.pitch_j * geometry.size_j / 2) / geometry.pitch_j;
+	coord.k = (neutron.z + geometry.pitch_k * geometry.size_k / 2) / geometry.pitch_k;
+
+	neutron.center_x = geometry.pitch_i * (0.5 + coord.i);
+	neutron.center_y = geometry.pitch_j * (0.5 + coord.j);  ///distance에 넣어야 할 수도!!
+	neutron.center_z = geometry.pitch_k * (0.5 + coord.k);
+
+	neutron.local_x = neutron.x - neutron.center_x;
+	neutron.local_y = neutron.y - neutron.center_y;
+	neutron.local_z = neutron.z - neutron.center_z;
+
+	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
+	neutron.current_cel_id = assembly.distribution[neutron.current_index];
+	
+	
+	
+	
 	Method method;
-	neutron.DTC = -(log(method.next(rn)) / material.materials[geometry.cells[neutron.current_cel_id].material_id].xs_t[neutron.group]);
+
+	neutron.current_material = forming.determine_material(neutron.local_x, neutron.local_y, neutron.local_z, neutron.current_cel_id, geometry);
+
+	if (neutron.current_material == -1) {
+		return;
+	}
+
+	neutron.DTC = -(log(method.next(rn)) / material.materials[neutron.current_material].xs_t[neutron.group]);
 
 	// current location (i, j, k) or (x, y, z) -> use index and cel.id
-	if (geometry.cells[neutron.current_cel_id].material_id == 0 || geometry.cells[neutron.current_cel_id].material_id == 2 || geometry.cells[neutron.current_cel_id].material_id == 3) {
+	if (neutron.current_material == 0 || neutron.current_material == 2 || neutron.current_material == 3) {
 		double dts_w = 0.0;
 		double dts_r = 0.0;
 		if (neutron.w > 0) dts_w = (geometry.pitch_k / 2 - neutron.local_z) / neutron.w;
@@ -63,7 +74,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 		neutron.DTS = std::min({ dts_w, dts_r });
 	}
-	if (geometry.cells[neutron.current_cel_id].material_id == 1) {
+	if (neutron.current_material == 1) {
 		double dts_u = 0.0;
 		double dts_v = 0.0;
 		double dts_w = 0.0;
@@ -103,9 +114,10 @@ void Manager::initialize() {
 void Manager::cycle() {
 	Method method;
 
-	for (int i = 0; i < NPS; ++i) {
+
+	for (int i = 0; i < current_NPS; ++i) {
 		if (current_bank.empty()) {
-			factory.ini_pos(rn, neutron, assembly, geometry, coord);
+			factory.ini_pos(rn, neutron, geometry);
 			neutron.group = 0;
 		}
 		else {
@@ -117,13 +129,121 @@ void Manager::cycle() {
 
 		while (loop_active) {
 			
-			distance.distance(rn, neutron, material, geometry, assembly);
+			distance.distance(rn, neutron, material, geometry, assembly, forming, coord);
 
 			if (neutron.DTC < neutron.DTS) {
+				double r = method.next(rn) * material.materials[neutron.current_material].xs_t[neutron.group];
+				double sum_scattering = std::accumulate(material.materials[neutron.current_material].xs_s.begin() + neutron.group * 7, material.materials[neutron.current_material].xs_s.begin() + (neutron.group * 7 + 7), 0.0);
 
+				if (r < sum_scattering) {
+					double accumulated_xs = 0.0;
+					for (int next_g = 0; next_g < 7; ++next_g) {
+						accumulated_xs += material.materials[neutron.current_material].xs_s[neutron.group * 7 + next_g];
+
+						if (r < accumulated_xs) {
+							neutron.group = next_g;
+							break;
+						}
+					}
+					neutron.x = neutron.x + neutron.u * neutron.DTC;
+					neutron.y = neutron.y + neutron.v * neutron.DTC;
+					neutron.z = neutron.z + neutron.w * neutron.DTC;
+
+					factory.ini_dir(rn, neutron);
+				}
+
+				else if (r < sum_scattering + material.materials[neutron.current_material].xs_c[neutron.group]) {
+					loop_active = false;
+				}
+
+				else  {
+					neutron.x = neutron.x + neutron.u * neutron.DTC;
+					neutron.y = neutron.y + neutron.v * neutron.DTC;
+					neutron.z = neutron.z + neutron.w * neutron.DTC;
+
+					tally_sum = material.materials[neutron.current_material].nu[neutron.group] * material.materials[neutron.current_material].xs_f[neutron.group] / material.materials[neutron.current_material].xs_t[neutron.group];
+					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] *
+						material.materials[neutron.current_material].xs_f[neutron.group] / material.materials[neutron.current_material].xs_t[neutron.group]
+						/ k + method.next(rn));
+					
+					generation_bank_count += nu_generated;
+
+					double accumulated_chi = 0.0;
+					for (int g = 0; g < nu_generated; ++g) {
+						double accumulated_chi = 0.0;
+
+						for (int next_g = 0; next_g < 7; ++next_g) {
+							accumulated_chi += material.materials[neutron.current_material].chi[next_g];
+
+							if (method.next(rn) < accumulated_chi) {
+								neutron.group = next_g;
+								break;
+							}
+						}
+						next_bank.push(neutron);
+					}
+					loop_active = false;
+				}
 			}
+
+			else {
+				neutron.x = neutron.x + neutron.u * neutron.DTS;
+				neutron.y = neutron.y + neutron.v * neutron.DTS;
+				neutron.z = neutron.z + neutron.w * neutron.DTS;
+
+				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2) {
+					neutron.u *= -1.0;
+				}
+
+				if (neutron.y >= geometry.pitch_j * geometry.size_j / 2 || neutron.y <= -geometry.pitch_j * geometry.size_j / 2) {
+					neutron.v *= -1.0;
+				}
+
+				if (neutron.z >= geometry.pitch_k * geometry.size_k / 2 || neutron.z <= -geometry.pitch_k * geometry.size_k / 2) {
+					neutron.w *= -1.0;
+				}
+			}
+			
 		}
 
+	}
+}
+
+void Manager::iteration() {
+	Method method;
+
+	double preceed_k = 0.0;
+	int inactive_cycles = 50;
+	double active_k_sum = 0.0;
+	double active_k_sq_sum = 0.0;
+	int active_count = 0;
+
+	for (int i = 0; i < total_cycles; ++i) {
+		generation_bank_count = 0.0;
+		cycle();
+
+		preceed_k = k;
+		k = tally_sum / current_NPS;
+
+		current_bank = std::move(next_bank);
+		current_NPS = current_bank.size();
+
+		if (i >= inactive_cycles) {
+			active_k_sum += k;
+			active_k_sq_sum += (k * k);
+			active_count++;
+			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k << "\n";
+		}
+		else {
+			std::cout << "Inactive Cycle " << i + 1 << " k_eff: " << k << "\n";
+		}
+	}
+	if (active_count > 0) {
+		double avg_k = active_k_sum / active_count;
+		double variance = (active_k_sq_sum / active_count) - (avg_k * avg_k);
+		double std_dev = std::sqrt(variance / (active_count - 1));
+
+		std::cout << avg_k << " ± " << std_dev << "\n";
 	}
 }
 
