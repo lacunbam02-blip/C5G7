@@ -98,7 +98,7 @@ int Forming::determine_material(double local_x, double local_y, double local_z, 
 				return sub.material_id;
 			}
 		}
-		break;
+		return cel.sub_cells.back().material_id;  //check
 	}
 	return -1;
 }
