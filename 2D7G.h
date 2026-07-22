@@ -35,11 +35,11 @@ public:
 
 class Manager {
 private:
-	int NPS = 200000;
-	int total_cycles = 100;
+	int NPS = 100000;
+	int total_cycles = 300;
 	int current_NPS = 0.0;
 	double tally_sum = 0.0;
-	double k = 1.0;
+	double k = 1.31115;
 
 	double generation_bank_count = 0.0;
 	std::queue<Neutron> current_bank;
@@ -60,7 +60,7 @@ private:
 	Sur_Data sur;
 
 public:
-	void initialize();
+	void initialize(int numNeutron);
 	void cycle();
 	void iteration();
 };

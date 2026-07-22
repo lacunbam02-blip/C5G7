@@ -125,7 +125,9 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	}
 }
 
-void Manager::initialize() {
+
+void Manager::initialize(int numNeutron) {
+	this->NPS = numNeutron;
 	Parsing parsing;
 
 	parsing.parsing("2D7G_Mat_Input.txt", material, geometry);
@@ -138,17 +140,19 @@ void Manager::initialize() {
 void Manager::cycle() {
 	Method method;
 
+	
 
 	for (int i = 0; i < current_NPS; ++i) {
 		if (current_bank.empty()) {
 			factory.ini_pos(rn, neutron, geometry);
+			factory.ini_dir(rn, neutron);
 			neutron.group = 0;
 		}
 		else {
 			neutron = current_bank.front();
 			current_bank.pop();
 		}
-		factory.ini_dir(rn, neutron);
+		
 		bool loop_active = true;
 
 		while (loop_active) {
@@ -160,7 +164,7 @@ void Manager::cycle() {
 				continue;
 			}
 
-			if (neutron.DTC < neutron.DTS) {
+			if (neutron.DTC < neutron.DTS) { // DTC가 DTS보다 짧으므로 Reaction
 
 				tally_sum += material.materials[neutron.current_material].nu[neutron.group] *
 					material.materials[neutron.current_material].xs_f[neutron.group] /
@@ -169,7 +173,7 @@ void Manager::cycle() {
 				double r = method.next(rn) * material.materials[neutron.current_material].xs_t[neutron.group];
 				double sum_scattering = std::accumulate(material.materials[neutron.current_material].xs_s.begin() + neutron.group * 7, material.materials[neutron.current_material].xs_s.begin() + (neutron.group * 7 + 7), 0.0);
 
-				if (r < sum_scattering) {
+				if (r < sum_scattering) {	// 반응 중 Scattering 선택
 					double accumulated_xs = 0.0;
 					for (int next_g = 0; next_g < 7; ++next_g) {
 						accumulated_xs += material.materials[neutron.current_material].xs_s[neutron.group * 7 + next_g];
@@ -186,17 +190,19 @@ void Manager::cycle() {
 					factory.ini_dir(rn, neutron);
 				}
 
-				else if (r < sum_scattering + material.materials[neutron.current_material].xs_c[neutron.group]) {
+				else if (r < sum_scattering + material.materials[neutron.current_material].xs_c[neutron.group]) {	// 반응 중 Absorption
+					// loop를 false로 만들어 흡수되어 반응하지 않는 걸 묘사
 					loop_active = false;
 				}
 
-				else  {
+				else  {		// fission
 					neutron.x = neutron.x + neutron.u * neutron.DTC;
 					neutron.y = neutron.y + neutron.v * neutron.DTC;
 					neutron.z = neutron.z + neutron.w * neutron.DTC;
 
 					double safe_k = (k > 0.0) ? k : 1.0;
-					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] / k + method.next(rn));
+
+					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] / safe_k + method.next(rn));
 					
 					generation_bank_count += nu_generated;
 
@@ -213,26 +219,30 @@ void Manager::cycle() {
 								break;
 							}
 						}
+						factory.ini_dir(rn, neutron);
 						next_bank.push(neutron);
 					}
 					loop_active = false;
 				}
 			}
 
-			else {
-				neutron.x = neutron.x + neutron.u * neutron.DTS;
-				neutron.y = neutron.y + neutron.v * neutron.DTS;
-				neutron.z = neutron.z + neutron.w * neutron.DTS;
+			else {	// DTC>DTS : 반응 안하고 다음 surface로 이동
+				neutron.x = neutron.x + neutron.u * (neutron.DTS + 1e-5);
+				neutron.y = neutron.y + neutron.v * (neutron.DTS + 1e-5);
+				neutron.z = neutron.z + neutron.w * (neutron.DTS + 1e-5);
 
 				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0) {
+					neutron.x = neutron.x - 2 * neutron.u * 1e-5;
 					neutron.u *= -1.0;
 				}
 
 				if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 || neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0) {
+					neutron.y = neutron.y - 2 * neutron.v * 1e-5;
 					neutron.v *= -1.0;
 				}
 
 				if (neutron.z >= geometry.pitch_k * geometry.size_k / 2.0 || neutron.z <= -geometry.pitch_k * geometry.size_k / 2.0) {
+					neutron.z = neutron.z - 2 * neutron.w * 1e-5;
 					neutron.w *= -1.0;
 				}
 			}
@@ -245,33 +255,60 @@ void Manager::cycle() {
 void Manager::iteration() {
 
 	double preceed_k = 0.0;
-	int inactive_cycles = 50;
+	int inactive_cycles = 200;
 	double active_k_sum = 0.0;
 	double active_k_sq_sum = 0.0;
 	int active_count = 0;
 
-	current_NPS = NPS;
+	this->current_NPS = NPS;
+	Method method;
+	for (int i = 0; i < current_NPS; i++) {
+		factory.ini_pos(rn, this->neutron, geometry);
+		factory.ini_dir(rn, this->neutron);
+		this->neutron.group = static_cast<int>(method.next(rn) * 6);
+		this->current_bank.push(this->neutron);
+	}
+
+	std::vector<Neutron> neutrons;
+	std::queue<Neutron> temp_queue = this->current_bank;
+	while (!temp_queue.empty()) {
+		neutrons.push_back(temp_queue.front());
+		temp_queue.pop();
+	}
+	/*
+	for (int i = 0; i < current_NPS; i++) {
+		Neutron localN = neutrons[i];
+		std::cout << "Neutron IDX " << i << ", pos: [" << localN.x << ", " << localN.y << ", " << localN.z << "],\t";
+		std::cout << "dir: [" << localN.u << ", " << localN.v << ", " << localN.w << "], Energy Group: " << localN.group << "\n";
+	}
+	*/
 
 	for (int i = 0; i < total_cycles; ++i) {
-		generation_bank_count = 0.0;
-		tally_sum = 0.0;
+		this->generation_bank_count = 0.0;
+		this->tally_sum = 0.0;
 
-		cycle();
+		this->cycle();
 
-		preceed_k = k;
-		k = tally_sum / static_cast<double>(current_NPS);
 
+		this->k = tally_sum / static_cast<double>(current_NPS);
+
+		//this->k = static_cast<double>(this->next_bank.size()) / static_cast<double>(current_NPS);
+		
 		current_bank = std::move(next_bank);
 		current_NPS = current_bank.size();
+
+		preceed_k = k;
 
 		if (i >= inactive_cycles) {
 			active_k_sum += k;
 			active_k_sq_sum += (k * k);
 			active_count++;
-			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k << "\n";
+			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k  << "\n";
+			std::cout << "current_NPS: " << current_NPS << "\n";
 		}
 		else {
 			std::cout << "Inactive Cycle " << i + 1 << " k_eff: " << k << "\n";
+			std::cout << "current_NPS: " << current_NPS << "\n";
 		}
 	}
 	if (active_count > 0) {
@@ -279,6 +316,6 @@ void Manager::iteration() {
 		double variance = (active_k_sq_sum / active_count) - (avg_k * avg_k);
 		double std_dev = std::sqrt(variance / (active_count - 1));
 
-		std::cout << avg_k << " ± " << std_dev << "\n";
+		std::cout << avg_k << " standard deviation " << std_dev << "\n";
 	}
 }
