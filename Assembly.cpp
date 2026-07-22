@@ -4,8 +4,8 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 	assembly.total_size = geometry.size_i * geometry.size_j * geometry.size_k;
 	assembly.distribution.assign(assembly.total_size, geometry.default_cell);
 
-	const int center_i = geometry.size_i/2;
-	const int center_j = geometry.size_j/2;
+	const int center_i = static_cast<int>(geometry.size_i / 2.0);
+	const int center_j = static_cast<int>(geometry.size_j / 2.0);
 
 	for (const auto& rep : geometry.replace_cells) {
 		int change_cell_id = rep.id;
@@ -98,9 +98,14 @@ int Forming::determine_material(double local_x, double local_y, double local_z, 
 				return sub.material_id;
 			}
 		}
-		return cel.sub_cells.back().material_id;  //check
+		if (!cel.sub_cells.empty()) {
+			return cel.sub_cells.back().material_id;
+		}
+		else {
+			return -1; 
+		}  //check
 	}
-	return -1;
+	return current_cell_id;  //check
 }
 
 //if value is 0?

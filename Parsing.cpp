@@ -3,6 +3,12 @@
 void Parsing::parsing(const std::string& filename, Material& material, Geometry& geometry) {
 	std::ifstream input_file(filename);
 
+
+	if (!input_file.is_open()) {
+		std::cerr << "Error: '" << filename << "' 파일을 찾을 수 없습니다!" << std::endl;
+		exit(1);
+	}   //check
+
 	std::string word;
 
 	bool skip_read = false; //check
@@ -11,7 +17,7 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 		skip_read = false; //check
 
 		if (word[0] == '#') continue;
-		if (word == "Material") {
+		else if (word == "Material") {
 			Mat_Data mat;
 			input_file >> mat.id;
 
@@ -36,7 +42,7 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 			}
 			material.materials.push_back(mat);
 		}
-		if (word == "Surface") {
+		else if (word == "Surface") {
 			Sur_Data sur;
 			input_file >> sur.id;
 
@@ -53,7 +59,7 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 
 			geometry.surfaces.push_back(sur);
 		}
-		if (word == "Cell") {
+		else if (word == "Cell") {
 			Cel_Data cel;
 			input_file >> cel.id;
 
@@ -77,13 +83,13 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 			}
 			geometry.cells.push_back(cel);
 		}
-		if (word == "Size") {
+		else if (word == "Size") {
 			input_file >> geometry.size_i;
 			input_file >> geometry.size_j;
 			input_file >> geometry.size_k;
 		}
-		if (word == "Default_Cell") input_file >> geometry.default_cell;
-		if (word == "Replace_Cell") {
+		else if (word == "Default_Cell") input_file >> geometry.default_cell;
+		else if (word == "Replace_Cell") {
 			Rep_Data rep;
 			input_file >> rep.id;
 			

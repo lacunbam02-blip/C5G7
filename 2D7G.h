@@ -37,7 +37,7 @@ class Manager {
 private:
 	int NPS = 200000;
 	int total_cycles = 100;
-	int current_NPS = 0;
+	int current_NPS = 0.0;
 	double tally_sum = 0.0;
 	double k = 1.0;
 
