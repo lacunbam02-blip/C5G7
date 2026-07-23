@@ -309,21 +309,20 @@ void Manager::iteration() {
 			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
 		}
 		if (i == inactive_cycles - 1) std::cout << "\n" << "--------------------------------" << "\n";
-
-		
-		std::ofstream outFile("neutron_dist.txt");
-		for (int row = 0; row < geometry.size_i; ++row) {
-			for (int col = 0; col < geometry.size_j; ++col) {
-				int idx = row * geometry.size_j + col;
-				outFile << accumulated_cell_count[idx] << " ";
-			}
-			outFile << "\n";
-		}
-		outFile.close();
-		std::cout << "\nAccumulated Neutron distribution saved to neutron_dist.txt\n";
-
-
 	}
+
+	std::ofstream outFile("neutron_dist.txt");
+	for (int row = 0; row < geometry.size_i; ++row) {
+		for (int col = 0; col < geometry.size_j; ++col) {
+			int idx = row * geometry.size_j + col;
+			outFile << accumulated_cell_count[idx] << " ";
+		}
+		outFile << "\n";
+	}
+	outFile.close();
+	std::cout << "\nAccumulated Neutron distribution saved to neutron_dist.txt\n";
+
+
 	if (active_count > 0) {
 		double avg_k = active_k_sum / active_count;
 		double variance = (active_k_sq_sum / active_count) - (avg_k * avg_k);
