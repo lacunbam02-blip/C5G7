@@ -35,15 +35,16 @@ public:
 
 class Manager {
 private:
-	int NPS = 100000;
+	int NPS = 0;
 	int total_cycles = 300;
+	int inactive_cycles = 200;
 	int current_NPS = 0.0;
 	double tally_sum = 0.0;
 	double k = 1.31115;
 
 	double generation_bank_count = 0.0;
-	std::queue<Neutron> current_bank;
-	std::queue<Neutron> next_bank;
+	std::vector<Neutron> current_bank;
+	std::vector<Neutron> next_bank;
 
 	lcg rn = lcg(123456789ULL);
 	Neutron neutron;

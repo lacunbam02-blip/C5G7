@@ -1,6 +1,6 @@
 #include "Assembly.h"
 
-void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& material, Geometry& geometry, Cel_Data& cel, Rep_Data rep, Sur_Data sur) {
+void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& material, Geometry& geometry, Cel_Data& cel, Rep_Data& rep, Sur_Data& sur) {
 	assembly.total_size = geometry.size_i * geometry.size_j * geometry.size_k;
 	assembly.distribution.assign(assembly.total_size, geometry.default_cell);
 
@@ -109,3 +109,69 @@ int Forming::determine_material(double local_x, double local_y, double local_z, 
 }
 
 //if value is 0?
+
+void Forming::printing(Assembly& assembly, Material& material, Geometry& geometry) {
+	std::cout << "==================================================\n";
+	std::cout << "                  MATERIAL DATA                   \n";
+	std::cout << "==================================================\n";
+	for (const auto& mat : material.materials) {
+		std::cout << "Material ID: " << mat.id << " (" << mat.name << ")\n";
+		std::cout << "  Group |     xs_t     |     xs_a     |     xs_c     |     xs_f     |      nu      |     chi      \n";
+		std::cout << "  ------|--------------|--------------|--------------|--------------|--------------|--------------\n";
+		for (size_t g = 0; g < mat.xs_t.size(); ++g) {
+			std::cout << "    " << g << "   | " << mat.xs_t[g] << " | " << mat.xs_a[g] << " | " << mat.xs_c[g] << " | " << mat.xs_f[g] << " | " << mat.nu[g] << " | " << mat.chi[g] << "\n";
+		}
+		std::cout << "\n  Scattering Matrix (xs_s):\n  ";
+		for (size_t i = 0; i < mat.xs_s.size(); ++i) {
+			std::cout << mat.xs_s[i] << " ";
+			if ((i + 1) % 7 == 0) std::cout << "\n  ";
+		}
+		std::cout << "\n--------------------------------------------------\n";
+	}
+
+	std::cout << "\n==================================================\n";
+	std::cout << "                  SURFACE DATA                    \n";
+	std::cout << "==================================================\n";
+	for (const auto& sur : geometry.surfaces) {
+		std::cout << "Surface ID: " << sur.id << " | Type: " << sur.type << " | Coeff: ";
+		for (double c : sur.coefficient) {
+			std::cout << c << " ";
+		}
+		std::cout << "\n";
+	}
+
+	std::cout << "\n==================================================\n";
+	std::cout << "                    CELL DATA                     \n";
+	std::cout << "==================================================\n";
+	for (const auto& cel : geometry.cells) {
+		std::cout << "Cell ID: " << cel.id << "\n";
+		for (const auto& sub : cel.sub_cells) {
+			std::cout << "  Material ID: " << sub.material_id << " | BC: ";
+			for (int bc : sub.boundary_condition) {
+				std::cout << (bc > 0 ? "+" : "") << bc << " ";
+			}
+			std::cout << "/\n";
+		}
+	}
+
+	std::cout << "\n==================================================\n";
+	std::cout << "                  GEOMETRY SIZE                   \n";
+	std::cout << "==================================================\n";
+	std::cout << "Size (i, j, k): " << geometry.size_i << ", " << geometry.size_j << ", " << geometry.size_k << "\n";
+	std::cout << "Pitch (i, j, k, r): " << geometry.pitch_i << ", " << geometry.pitch_j << ", " << geometry.pitch_k << ", " << geometry.pitch_r << "\n";
+	std::cout << "Default Cell: " << geometry.default_cell << "\n";
+
+	std::cout << "\n==================================================\n";
+	std::cout << "             CELL DISTRIBUTION (K = 0)            \n";
+	std::cout << "==================================================\n";
+
+	int layer_k = 0;
+	for (int i = 0; i < geometry.size_i; ++i) {
+		for (int j = 0; j < geometry.size_j; ++j) {
+			int idx = layer_k * (geometry.size_i * geometry.size_j) + i * geometry.size_j + j;
+			std::cout << assembly.distribution[idx];
+		}
+		std::cout << "\n";
+	}
+	std::cout << "==================================================\n";
+}

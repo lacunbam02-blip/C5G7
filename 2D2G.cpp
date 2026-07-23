@@ -135,23 +135,17 @@ void Manager::initialize(int numNeutron) {
 	Forming forming;
 
 	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
+
+	forming.printing(assembly, material, geometry);
 }
 
 void Manager::cycle() {
 	Method method;
 
 	
-
 	for (int i = 0; i < current_NPS; ++i) {
-		if (current_bank.empty()) {
-			factory.ini_pos(rn, neutron, geometry);
-			factory.ini_dir(rn, neutron);
-			neutron.group = 0;
-		}
-		else {
-			neutron = current_bank.front();
-			current_bank.pop();
-		}
+		
+		neutron = current_bank[i];
 		
 		bool loop_active = true;
 
@@ -220,7 +214,7 @@ void Manager::cycle() {
 							}
 						}
 						factory.ini_dir(rn, neutron);
-						next_bank.push(neutron);
+						next_bank.push_back(neutron);
 					}
 					loop_active = false;
 				}
@@ -254,34 +248,28 @@ void Manager::cycle() {
 
 void Manager::iteration() {
 
-	double preceed_k = 0.0;
-	int inactive_cycles = 200;
 	double active_k_sum = 0.0;
 	double active_k_sq_sum = 0.0;
 	int active_count = 0;
 
 	this->current_NPS = NPS;
 	Method method;
+
 	for (int i = 0; i < current_NPS; i++) {
 		factory.ini_pos(rn, this->neutron, geometry);
 		factory.ini_dir(rn, this->neutron);
 		this->neutron.group = static_cast<int>(method.next(rn) * 6);
-		this->current_bank.push(this->neutron);
-	}
+		//this->neutron.group = 0;
 
-	std::vector<Neutron> neutrons;
-	std::queue<Neutron> temp_queue = this->current_bank;
-	while (!temp_queue.empty()) {
-		neutrons.push_back(temp_queue.front());
-		temp_queue.pop();
+		this->current_bank.push_back(this->neutron);
+
+		if (i < 100) {
+			Neutron localN = current_bank[i];
+			std::cout << "Neutron IDX " << i << ", pos: [" << localN.x << ", " << localN.y << ", " << localN.z << "],\t";
+			std::cout << "dir: [" << localN.u << ", " << localN.v << ", " << localN.w << "], Energy Group: " << localN.group << "\n";
+		}
+		
 	}
-	/*
-	for (int i = 0; i < current_NPS; i++) {
-		Neutron localN = neutrons[i];
-		std::cout << "Neutron IDX " << i << ", pos: [" << localN.x << ", " << localN.y << ", " << localN.z << "],\t";
-		std::cout << "dir: [" << localN.u << ", " << localN.v << ", " << localN.w << "], Energy Group: " << localN.group << "\n";
-	}
-	*/
 
 	for (int i = 0; i < total_cycles; ++i) {
 		this->generation_bank_count = 0.0;
@@ -294,21 +282,45 @@ void Manager::iteration() {
 
 		//this->k = static_cast<double>(this->next_bank.size()) / static_cast<double>(current_NPS);
 		
-		current_bank = std::move(next_bank);
+		current_bank = next_bank;
+		next_bank.clear();
+		next_bank.reserve(this->NPS);
 		current_NPS = current_bank.size();
-
-		preceed_k = k;
 
 		if (i >= inactive_cycles) {
 			active_k_sum += k;
 			active_k_sq_sum += (k * k);
 			active_count++;
 			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k  << "\n";
-			std::cout << "current_NPS: " << current_NPS << "\n";
+			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
 		}
 		else {
 			std::cout << "Inactive Cycle " << i + 1 << " k_eff: " << k << "\n";
-			std::cout << "current_NPS: " << current_NPS << "\n";
+			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
+		}
+		if (i == inactive_cycles) std::cout << "--------------------------------" << "\n";
+
+		if (i == total_cycles - 1) {
+			std::vector<int> cell_neutron_count(geometry.size_i * geometry.size_j, 0);
+
+			for (const auto& n : current_bank) {
+				int cell_idx = n.current_index;
+
+				if (cell_idx >= 0 && cell_idx < cell_neutron_count.size()) {
+					cell_neutron_count[cell_idx]++;
+				}
+			}
+			std::ofstream outFile("neutron_dist.txt");
+			for (int row = 0; row < geometry.size_i; ++row) {
+				for (int col = 0; col < geometry.size_j; ++col) {
+					int idx = row * geometry.size_j + col;
+					outFile << cell_neutron_count[idx] << " ";
+				}
+				outFile << "\n";
+			}
+			outFile.close();
+			std::cout << "\nNeutron distribution saved to neutron_dist.txt\n";
+
 		}
 	}
 	if (active_count > 0) {
