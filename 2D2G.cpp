@@ -255,6 +255,8 @@ void Manager::iteration() {
 	this->current_NPS = NPS;
 	Method method;
 
+	std::vector<int> accumulated_cell_count(geometry.size_i * geometry.size_j, 0);
+
 	for (int i = 0; i < current_NPS; i++) {
 		factory.ini_pos(rn, this->neutron, geometry);
 		factory.ini_dir(rn, this->neutron);
@@ -291,6 +293,14 @@ void Manager::iteration() {
 			active_k_sum += k;
 			active_k_sq_sum += (k * k);
 			active_count++;
+
+			for (const auto& n : current_bank) {
+				int cell_idx = n.current_index;
+				if (cell_idx >= 0 && cell_idx < accumulated_cell_count.size()) {
+					accumulated_cell_count[cell_idx]++;
+				}
+			}
+
 			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k  << "\n";
 			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
 		}
@@ -298,30 +308,21 @@ void Manager::iteration() {
 			std::cout << "Inactive Cycle " << i + 1 << " k_eff: " << k << "\n";
 			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
 		}
-		if (i == inactive_cycles) std::cout << "--------------------------------" << "\n";
+		if (i == inactive_cycles - 1) std::cout << "\n" << "--------------------------------" << "\n";
 
-		if (i == total_cycles - 1) {
-			std::vector<int> cell_neutron_count(geometry.size_i * geometry.size_j, 0);
-
-			for (const auto& n : current_bank) {
-				int cell_idx = n.current_index;
-
-				if (cell_idx >= 0 && cell_idx < cell_neutron_count.size()) {
-					cell_neutron_count[cell_idx]++;
-				}
+		
+		std::ofstream outFile("neutron_dist.txt");
+		for (int row = 0; row < geometry.size_i; ++row) {
+			for (int col = 0; col < geometry.size_j; ++col) {
+				int idx = row * geometry.size_j + col;
+				outFile << accumulated_cell_count[idx] << " ";
 			}
-			std::ofstream outFile("neutron_dist.txt");
-			for (int row = 0; row < geometry.size_i; ++row) {
-				for (int col = 0; col < geometry.size_j; ++col) {
-					int idx = row * geometry.size_j + col;
-					outFile << cell_neutron_count[idx] << " ";
-				}
-				outFile << "\n";
-			}
-			outFile.close();
-			std::cout << "\nNeutron distribution saved to neutron_dist.txt\n";
-
+			outFile << "\n";
 		}
+		outFile.close();
+		std::cout << "\nAccumulated Neutron distribution saved to neutron_dist.txt\n";
+
+
 	}
 	if (active_count > 0) {
 		double avg_k = active_k_sum / active_count;
