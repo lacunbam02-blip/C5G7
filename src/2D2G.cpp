@@ -31,9 +31,19 @@ void Factory::ini_dir(lcg& rn, Neutron& neutron) {
 
 void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly, Forming& forming, Coord& coord) {
 	
-	int calc_i = static_cast<int>((neutron.x + geometry.pitch_i * geometry.size_i / 2.0) / geometry.pitch_i);
-	int calc_j = static_cast<int>((neutron.y + geometry.pitch_j * geometry.size_j / 2.0) / geometry.pitch_j);
-	int calc_k = static_cast<int>((neutron.z + geometry.pitch_k * geometry.size_k / 2.0) / geometry.pitch_k);
+	double logical_x = neutron.x;
+	double logical_y = neutron.y;
+	double logical_z = neutron.z;
+	
+	if (neutron.DTC >= neutron.DTS) {
+		logical_x += neutron.u * 1e-6;
+		logical_y += neutron.v * 1e-6;
+		logical_z += neutron.w * 1e-6;
+	}
+
+	int calc_i = static_cast<int>((logical_x + geometry.pitch_i * geometry.size_i / 2.0) / geometry.pitch_i);
+	int calc_j = static_cast<int>((logical_y + geometry.pitch_j * geometry.size_j / 2.0) / geometry.pitch_j);
+	int calc_k = static_cast<int>((logical_z + geometry.pitch_k * geometry.size_k / 2.0) / geometry.pitch_k);
 
 	if (calc_i >= geometry.size_i) calc_i = geometry.size_i - 1;
 	else if (calc_i < 0) calc_i = 0;
@@ -59,12 +69,14 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
 	neutron.current_cel_id = assembly.distribution[neutron.current_index];
 	
-	
+	double logical_local_x = logical_x - neutron.center_x;
+	double logical_local_y = logical_y - neutron.center_y;
+	double logical_local_z = logical_z - neutron.center_z;
 	
 	
 	Method method;
 
-	neutron.current_material = forming.determine_material(neutron.local_x, neutron.local_y, neutron.local_z, neutron.current_cel_id, geometry);
+	neutron.current_material = forming.determine_material(logical_local_x, logical_local_y, logical_local_z, neutron.current_cel_id, geometry);
 
 	if (neutron.current_material == -1) {
 		return;
@@ -204,11 +216,12 @@ void Manager::cycle() {
 
 						neutron.group = 0;
 						double accumulated_chi = 0.0;
+						double r_chi = method.next(rn);
 
 						for (int next_g = 0; next_g < 7; ++next_g) {
 							accumulated_chi += material.materials[neutron.current_material].chi[next_g];
 
-							if (method.next(rn) < accumulated_chi) {
+							if (r_chi < accumulated_chi) {
 								neutron.group = next_g;
 								break;
 							}
@@ -221,22 +234,19 @@ void Manager::cycle() {
 			}
 
 			else {	// DTC>DTS : 반응 안하고 다음 surface로 이동
-				neutron.x = neutron.x + neutron.u * (neutron.DTS + 1e-5);
-				neutron.y = neutron.y + neutron.v * (neutron.DTS + 1e-5);
-				neutron.z = neutron.z + neutron.w * (neutron.DTS + 1e-5);
+				neutron.x = neutron.x + neutron.u * (neutron.DTS );
+				neutron.y = neutron.y + neutron.v * (neutron.DTS );
+				neutron.z = neutron.z + neutron.w * (neutron.DTS );
 
-				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0) {
-					neutron.x = neutron.x - 2 * neutron.u * 1e-5;
+				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 - 1e-9 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0 + 1e-9) {
 					neutron.u *= -1.0;
 				}
 
-				if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 || neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0) {
-					neutron.y = neutron.y - 2 * neutron.v * 1e-5;
+				if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9 || neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
 					neutron.v *= -1.0;
 				}
 
-				if (neutron.z >= geometry.pitch_k * geometry.size_k / 2.0 || neutron.z <= -geometry.pitch_k * geometry.size_k / 2.0) {
-					neutron.z = neutron.z - 2 * neutron.w * 1e-5;
+				if (neutron.z >= geometry.pitch_k * geometry.size_k / 2.0 - 1e-9 || neutron.z <= -geometry.pitch_k * geometry.size_k / 2.0 + 1e-9) {
 					neutron.w *= -1.0;
 				}
 			}
@@ -295,9 +305,10 @@ void Manager::iteration() {
 			active_count++;
 
 			for (const auto& n : current_bank) {
-				int cell_idx = n.current_index;
-				if (cell_idx >= 0 && cell_idx < accumulated_cell_count.size()) {
-					accumulated_cell_count[cell_idx]++;
+				int cell_idx_d = n.current_index % (geometry.size_i * geometry.size_j);
+
+				if (cell_idx_d >= 0 && cell_idx_d < accumulated_cell_count.size()) {
+					accumulated_cell_count[cell_idx_d]++;
 				}
 			}
 
