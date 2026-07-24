@@ -154,15 +154,15 @@ void Manager::initialize(int numNeutron) {
 void Manager::cycle() {
 	Method method;
 
-	
+
 	for (int i = 0; i < current_NPS; ++i) {
-		
+
 		neutron = current_bank[i];
-		
+
 		bool loop_active = true;
 
 		while (loop_active) {
-			
+
 			distance.distance(rn, neutron, material, geometry, assembly, forming, coord);
 
 			if (neutron.current_material == -1) {
@@ -201,7 +201,7 @@ void Manager::cycle() {
 					loop_active = false;
 				}
 
-				else  {		// fission
+				else {		// fission
 					neutron.x = neutron.x + neutron.u * neutron.DTC;
 					neutron.y = neutron.y + neutron.v * neutron.DTC;
 					neutron.z = neutron.z + neutron.w * neutron.DTC;
@@ -209,7 +209,7 @@ void Manager::cycle() {
 					double safe_k = (k > 0.0) ? k : 1.0;
 
 					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] / safe_k + method.next(rn));
-					
+
 					generation_bank_count += nu_generated;
 
 					for (int g = 0; g < nu_generated; ++g) {
@@ -234,9 +234,9 @@ void Manager::cycle() {
 			}
 
 			else {	// DTC>DTS : 반응 안하고 다음 surface로 이동
-				neutron.x = neutron.x + neutron.u * (neutron.DTS );
-				neutron.y = neutron.y + neutron.v * (neutron.DTS );
-				neutron.z = neutron.z + neutron.w * (neutron.DTS );
+				neutron.x = neutron.x + neutron.u * (neutron.DTS);
+				neutron.y = neutron.y + neutron.v * (neutron.DTS);
+				neutron.z = neutron.z + neutron.w * (neutron.DTS);
 
 				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 - 1e-9 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0 + 1e-9) {
 					neutron.u *= -1.0;
@@ -250,7 +250,7 @@ void Manager::cycle() {
 					neutron.w *= -1.0;
 				}
 			}
-			
+
 		}
 
 	}
@@ -280,7 +280,7 @@ void Manager::iteration() {
 			std::cout << "Neutron IDX " << i << ", pos: [" << localN.x << ", " << localN.y << ", " << localN.z << "],\t";
 			std::cout << "dir: [" << localN.u << ", " << localN.v << ", " << localN.w << "], Energy Group: " << localN.group << "\n";
 		}
-		
+
 	}
 
 	for (int i = 0; i < total_cycles; ++i) {
@@ -293,7 +293,7 @@ void Manager::iteration() {
 		this->k = tally_sum / static_cast<double>(current_NPS);
 
 		//this->k = static_cast<double>(this->next_bank.size()) / static_cast<double>(current_NPS);
-		
+
 		current_bank = next_bank;
 		next_bank.clear();
 		next_bank.reserve(this->NPS);
@@ -312,7 +312,7 @@ void Manager::iteration() {
 				}
 			}
 
-			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k  << "\n";
+			std::cout << "Active Cycle " << i + 1 << " k_eff: " << k << "\n";
 			std::cout << "                " << "current_NPS: " << current_NPS << "\n";
 		}
 		else {

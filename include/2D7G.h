@@ -40,7 +40,7 @@ private:
 	int inactive_cycles = 200;
 	int current_NPS = 0.0;
 	double tally_sum = 0.0;
-	double k = 1.31115;
+	double k = 1.0;
 
 	double generation_bank_count = 0.0;
 	std::vector<Neutron> current_bank;

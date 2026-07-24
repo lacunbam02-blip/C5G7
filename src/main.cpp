@@ -6,7 +6,7 @@
 int main() {
 	Manager manager;
 	
-	manager.initialize(100000);
+	manager.initialize(10000);
 	manager.iteration();
 	return 0;
 }
