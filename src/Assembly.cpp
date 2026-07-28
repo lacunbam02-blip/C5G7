@@ -31,7 +31,7 @@ void Forming::distribution_forming(Assembly& assembly, Coord& coord, Material& m
 					if (sym_x < 0 || sym_x >= geometry.size_i || sym_y < 0 || sym_y >= geometry.size_j) {
 						continue;
 					}
-					int idx = i * (geometry.size_i * geometry.size_j) + sym_x * geometry.size_i + sym_y;
+					int idx = i * (geometry.size_i * geometry.size_j) + sym_y * geometry.size_i + sym_x;
 					assembly.distribution[idx] = change_cell_id;
 				}
 			}

@@ -34,7 +34,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	double logical_x = neutron.x;
 	double logical_y = neutron.y;
 	double logical_z = neutron.z;
-	
+
 	if (neutron.DTC >= neutron.DTS) {
 		logical_x += neutron.u * 1e-6;
 		logical_y += neutron.v * 1e-6;
@@ -68,12 +68,12 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
 	neutron.current_cel_id = assembly.distribution[neutron.current_index];
-	
+
 	double logical_local_x = logical_x - neutron.center_x;
 	double logical_local_y = logical_y - neutron.center_y;
 	double logical_local_z = logical_z - neutron.center_z;
-	
-	
+
+
 	Method method;
 
 	neutron.current_material = forming.determine_material(logical_local_x, logical_local_y, logical_local_z, neutron.current_cel_id, geometry);
@@ -135,6 +135,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 		neutron.DTS = std::min({ dts_u, dts_v, dts_w, dts_r });
 	}
+
 }
 
 
@@ -232,7 +233,6 @@ void Manager::cycle() {
 					loop_active = false;
 				}
 			}
-
 			else {	// DTC>DTS : 반응 안하고 다음 surface로 이동
 				neutron.x = neutron.x + neutron.u * (neutron.DTS);
 				neutron.y = neutron.y + neutron.v * (neutron.DTS);
@@ -250,11 +250,29 @@ void Manager::cycle() {
 					neutron.w *= -1.0;
 				}
 			}
+			/*
+			else {	// DTC>DTS : 반응 안하고 다음 surface로 이동
+				neutron.x = neutron.x + neutron.u * (neutron.DTS);
+				neutron.y = neutron.y + neutron.v * (neutron.DTS);
+				neutron.z = neutron.z + neutron.w * (neutron.DTS);
 
+				double bound_x = geometry.pitch_i * geometry.size_i / 2.0;
+				double bound_y = geometry.pitch_j * geometry.size_j / 2.0;
+				double bound_z = geometry.pitch_k * geometry.size_k / 2.0;
+
+				// 경계를 넘어가면 중성자가 시스템 밖으로 누설됨 (추적 종료)
+				if (std::abs(neutron.x) >= bound_x - 1e-9 ||
+					std::abs(neutron.y) >= bound_y - 1e-9 ||
+					std::abs(neutron.z) >= bound_z - 1e-9) {
+					loop_active = false;
+				}
+			}
+			*/
 		}
 
 	}
 }
+
 
 void Manager::iteration() {
 
@@ -271,7 +289,8 @@ void Manager::iteration() {
 		factory.ini_pos(rn, this->neutron, geometry);
 		factory.ini_dir(rn, this->neutron);
 		this->neutron.group = static_cast<int>(method.next(rn) * 6);
-		//this->neutron.group = 0;
+		this->neutron.weight = 1.0;
+		
 
 		this->current_bank.push_back(this->neutron);
 
@@ -294,10 +313,13 @@ void Manager::iteration() {
 
 		//this->k = static_cast<double>(this->next_bank.size()) / static_cast<double>(current_NPS);
 
+
 		current_bank = next_bank;
 		next_bank.clear();
 		next_bank.reserve(this->NPS);
 		current_NPS = current_bank.size();
+
+
 
 		if (i >= inactive_cycles) {
 			active_k_sum += k;

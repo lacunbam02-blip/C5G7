@@ -9,7 +9,7 @@ public:
 	double x = 0.0, y = 0.0, z = 0.0;
 	double u = 0.0, v = 0.0, w = 0.0;
 	int group = 0;
-	double weight = 1.0;
+	double weight = 0.0;
 
 	double center_x = 0.0, center_y = 0.0, center_z = 0.0;
 	double local_x = 0.0, local_y = 0.0, local_z = 0.0;
@@ -36,11 +36,13 @@ public:
 class Manager {
 private:
 	int NPS = 0;
-	int total_cycles = 300;
-	int inactive_cycles = 200;
+	int total_cycles = 150;
+	int inactive_cycles = 50;
 	int current_NPS = 0.0;
+	
 	double tally_sum = 0.0;
 	double k = 1.0;
+
 
 	double generation_bank_count = 0.0;
 	std::vector<Neutron> current_bank;
