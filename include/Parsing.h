@@ -41,24 +41,17 @@ struct Cel_Data {
 	std::vector<Sub_Cell> sub_cells;
 };
 
-struct Coord {
+struct Coord {    //나중에 자리 옮기기!
 	int i = 0;
 	int j = 0;
 	int k = 0;
 };
-
-struct Rep_Data {
-	int id = 0;
-	std::vector<Coord> replace_cell;
-};
-
 
 class Geometry {
 public:
 	std::vector<Sur_Data> surfaces;
 	std::vector<Cel_Data> cells;
 
-	int default_cell = 0;
 	int size_i = 0;
 	int size_j = 0;
 	int size_k = 0;
@@ -68,7 +61,8 @@ public:
 	double pitch_j = 0.0;
 	double pitch_k = 0.0;
 
-	std::vector<Rep_Data> replace_cells;
+	std::vector<int> distribution;
+	int total_size = 0;
 };
 
 //
@@ -76,4 +70,7 @@ public:
 class Parsing {
 public:
 	void parsing(const std::string& filename, Material& material, Geometry& geometry);
+	double evaluate_surface(double local_x, double local_y, double local_z, Sur_Data& sur) const;
+	int determine_material(double local_x, double local_y, double local_z, int current_cell_id, const Geometry& geometry) const;
+	void printing( Material& material, Geometry& geometry);
 };
