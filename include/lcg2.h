@@ -15,5 +15,5 @@ public:
 
 class Method {
 public:
-	double next(lcg& rn);
+	double random_number_generator(lcg& rn);
 };
