@@ -5,8 +5,8 @@
 
 void Factory::ini_pos(lcg& rn, Neutron& neutron, Geometry& geometry) {
 	Method method;
-	neutron.x = method.random_number_generator(rn) * geometry.pitch_i * geometry.size_i - geometry.pitch_i * geometry.size_i / 2.0;
-	neutron.y = method.random_number_generator(rn) * geometry.pitch_j * geometry.size_j - geometry.pitch_j * geometry.size_j / 2.0;
+	neutron.x = method.random_number_generator(rn) * geometry.pitch_i * geometry.size_i * (5 / 3) - geometry.pitch_i * geometry.size_i / 2.0;
+	neutron.y = method.random_number_generator(rn) * geometry.pitch_j * geometry.size_j * (5 / 3) - geometry.pitch_j * geometry.size_j / 2.0;
 	neutron.z = method.random_number_generator(rn) * geometry.pitch_k * geometry.size_k - geometry.pitch_k * geometry.size_k / 2.0;
 }
 
@@ -65,6 +65,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	neutron.local_y = neutron.y - neutron.center_y;
 	neutron.local_z = neutron.z - neutron.center_z;
 
+	//int lookup_k = (geometry.size_k - 1) - coord.k;
 	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
 	neutron.current_cel_id = geometry.distribution[neutron.current_index];
 
@@ -229,10 +230,10 @@ void Manager::cycle() {
 					loop_active = false;
 				}
 
-				if (neutron.y >= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
-					neutron.v *= -1.0;
+				if (neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
+					 neutron.v *= -1.0;
 				}
-				else if (neutron.y <= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9) {
+				else if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9) {
 					loop_active = false;
 				}
 
