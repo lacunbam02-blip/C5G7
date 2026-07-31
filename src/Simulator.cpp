@@ -229,10 +229,10 @@ void Manager::cycle() {
 					loop_active = false;
 				}
 
-				if (neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
+				if (neutron.y >= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
 					neutron.v *= -1.0;
 				}
-				else if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9) {
+				else if (neutron.y <= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9) {
 					loop_active = false;
 				}
 
@@ -289,7 +289,7 @@ void Manager::iteration(int numNeutron) {
 
 		this->current_bank.push_back(this->neutron);
 
-		if (i < 100) {
+		if (i < 10) {
 			Neutron localN = current_bank[i];
 			std::cout << "Neutron IDX " << i << ", pos: [" << localN.x << ", " << localN.y << ", " << localN.z << "],\t";
 			std::cout << "dir: [" << localN.u << ", " << localN.v << ", " << localN.w << "], Energy Group: " << localN.group << "\n";
