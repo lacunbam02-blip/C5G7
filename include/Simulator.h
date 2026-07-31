@@ -1,5 +1,4 @@
 #pragma once
-#include "Assembly.h"
 #include "Parsing.h"
 #include "lcg2.h"
 #include <queue>
@@ -29,7 +28,7 @@ public:
 
 class Distance {
 public:
-	void distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly, Forming& forming, Coord& coord);
+	void distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Parsing& parsing, Coord& coord);
 };
 
 
@@ -54,16 +53,19 @@ private:
 	Geometry geometry;
 	Factory factory;
 	Distance distance;
-	Assembly assembly;
-	Forming forming;
+	Parsing parsing;
 	Coord coord;
 	Mat_Data mat;
 	Cel_Data cel;
-	Rep_Data rep;
 	Sur_Data sur;
 
 public:
-	void initialize(int numNeutron);
 	void cycle();
-	void iteration();
+	void iteration(int numNeutron);
+	// Manager 클래스 (Parsing.h 또는 Simulator.h)
+public:
+	void set_data(const Material& mat, const Geometry& geo) {
+		this->material = mat;
+		this->geometry = geo;
+	}
 };
