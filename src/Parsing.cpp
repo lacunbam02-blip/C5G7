@@ -103,7 +103,8 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 				extra_data.push_back(var8);
 			}
 
-			for (int k = 0; k < geometry.size_k; k++) {
+			/*
+			* 	for (int k = 0; k < geometry.size_k; k++) {
 				if (k < 17) {
 					// 0~16 층 상단 데이터
 					for (int j = 0; j < geometry.size_i * geometry.size_j; j++) {
@@ -117,7 +118,26 @@ void Parsing::parsing(const std::string& filename, Material& material, Geometry&
 					}
 				}
 			}
+			*/
+			// Parsing_2.cpp 의 Core 파싱 부분
+			for (int k = 0; k < geometry.size_k; k++) {
+				if (k < 153) {
+					// 0~33 층: Z축 바닥 (반사 경계면, 노심 중심부) -> 연료 배치
+					for (int j = 0; j < geometry.size_i * geometry.size_j; j++) {
+						geometry.distribution.push_back(extra_data[j]);
+					}
+				}
+				else {
+					// 34~50 층: Z축 천장 (누설 경계면, 반사체 덮개) -> 감속재(0) 배치
+					for (int j = 0; j < geometry.size_i * geometry.size_j; j++) {
+						geometry.distribution.push_back(0);
+					}
+				}
+			}
 
+		
+			
+	
 		}
 	}
 }
