@@ -1,23 +1,22 @@
-#include "Assembly.h"
-#include "Parsing.h"
-#include "lcg2.h"
-#include "2D7G.h"
+#include "../include/Parsing.h"
+#include "../include/lcg2.h"
+#include "../include/Simulator.h"
 #include <algorithm>
 
 void Factory::ini_pos(lcg& rn, Neutron& neutron, Geometry& geometry) {
 	Method method;
-	neutron.x = method.next(rn) * geometry.pitch_i * geometry.size_i - geometry.pitch_i * geometry.size_i / 2.0;
-	neutron.y = method.next(rn) * geometry.pitch_j * geometry.size_j - geometry.pitch_j * geometry.size_j / 2.0;
-	neutron.z = method.next(rn) * geometry.pitch_k * geometry.size_k - geometry.pitch_k * geometry.size_k / 2.0;
+	neutron.x = method.random_number_generator(rn) * geometry.pitch_i * geometry.size_i - geometry.pitch_i * geometry.size_i / 2.0;
+	neutron.y = method.random_number_generator(rn) * geometry.pitch_j * geometry.size_j - geometry.pitch_j * geometry.size_j / 2.0;
+	neutron.z = method.random_number_generator(rn) * geometry.pitch_k * geometry.size_k - geometry.pitch_k * geometry.size_k / 2.0;
 }
 
 void Factory::ini_dir(lcg& rn, Neutron& neutron) {
 	Method method;
 	double x, y, z, r_2 = 0.0;
 	for (int i = 0; i < 40000; ++i) {
-		x = method.next(rn) * 2 - 1;
-		y = method.next(rn) * 2 - 1;
-		z = method.next(rn) * 2 - 1;
+		x = method.random_number_generator(rn) * 2 - 1;
+		y = method.random_number_generator(rn) * 2 - 1;
+		z = method.random_number_generator(rn) * 2 - 1;
 		r_2 = x * x + y * y + z * z;
 		if (r_2 <= 1 && r_2 != 0) break;
 	}
@@ -29,7 +28,7 @@ void Factory::ini_dir(lcg& rn, Neutron& neutron) {
 
 
 
-void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Assembly& assembly, Forming& forming, Coord& coord) {
+void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry& geometry, Parsing& parsing, Coord& coord) {
 	
 	double logical_x = neutron.x;
 	double logical_y = neutron.y;
@@ -67,7 +66,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 	neutron.local_z = neutron.z - neutron.center_z;
 
 	neutron.current_index = coord.k * (geometry.size_i * geometry.size_j) + coord.j * geometry.size_i + coord.i;
-	neutron.current_cel_id = assembly.distribution[neutron.current_index];
+	neutron.current_cel_id = geometry.distribution[neutron.current_index];
 
 	double logical_local_x = logical_x - neutron.center_x;
 	double logical_local_y = logical_y - neutron.center_y;
@@ -76,16 +75,16 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 	Method method;
 
-	neutron.current_material = forming.determine_material(logical_local_x, logical_local_y, logical_local_z, neutron.current_cel_id, geometry);
+	neutron.current_material = parsing.determine_material(logical_local_x, logical_local_y, logical_local_z, neutron.current_cel_id, geometry);
 
 	if (neutron.current_material == -1) {
 		return;
 	}
 
-	neutron.DTC = -(log(method.next(rn)) / material.materials[neutron.current_material].xs_t[neutron.group]);
+	neutron.DTC = -(log(method.random_number_generator(rn)) / material.materials[neutron.current_material].xs_t[neutron.group]);
 
 	// current location (i, j, k) or (x, y, z) -> use index and cel.id
-	if (neutron.current_material == 0 || neutron.current_material == 2 || neutron.current_material == 3) {
+	if (neutron.current_material == 1 || neutron.current_material == 2 || neutron.current_material == 3 || neutron.current_material == 4 || neutron.current_material == 5 || neutron.current_material == 6) {
 		double dts_w = 0.0;
 		double dts_r = 0.0;
 		if (neutron.w > 0) dts_w = (geometry.pitch_k / 2.0 - neutron.local_z) / neutron.w;
@@ -103,7 +102,7 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 		neutron.DTS = std::min({ dts_w, dts_r });
 	}
-	if (neutron.current_material == 1) {
+	if (neutron.current_material == 0) {
 		double dts_u = 0.0;
 		double dts_v = 0.0;
 		double dts_w = 0.0;
@@ -138,23 +137,8 @@ void Distance::distance(lcg& rn, Neutron& neutron, Material& material, Geometry&
 
 }
 
-
-void Manager::initialize(int numNeutron) {
-	this->NPS = numNeutron;
-	Parsing parsing;
-
-	parsing.parsing("2D7G_Mat_Input.txt", material, geometry);
-
-	Forming forming;
-
-	forming.distribution_forming(assembly, coord, material, geometry, cel, rep, sur);
-
-	forming.printing(assembly, material, geometry);
-}
-
 void Manager::cycle() {
 	Method method;
-
 
 	for (int i = 0; i < current_NPS; ++i) {
 
@@ -164,7 +148,7 @@ void Manager::cycle() {
 
 		while (loop_active) {
 
-			distance.distance(rn, neutron, material, geometry, assembly, forming, coord);
+			distance.distance(rn, neutron, material, geometry, parsing, coord);
 
 			if (neutron.current_material == -1) {
 				loop_active = false;
@@ -177,7 +161,7 @@ void Manager::cycle() {
 					material.materials[neutron.current_material].xs_f[neutron.group] /
 					material.materials[neutron.current_material].xs_t[neutron.group];
 
-				double r = method.next(rn) * material.materials[neutron.current_material].xs_t[neutron.group];
+				double r = method.random_number_generator(rn) * material.materials[neutron.current_material].xs_t[neutron.group];
 				double sum_scattering = std::accumulate(material.materials[neutron.current_material].xs_s.begin() + neutron.group * 7, material.materials[neutron.current_material].xs_s.begin() + (neutron.group * 7 + 7), 0.0);
 
 				if (r < sum_scattering) {	// 반응 중 Scattering 선택
@@ -209,7 +193,7 @@ void Manager::cycle() {
 
 					double safe_k = (k > 0.0) ? k : 1.0;
 
-					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] / safe_k + method.next(rn));
+					int nu_generated = static_cast<int>(material.materials[neutron.current_material].nu[neutron.group] / safe_k + method.random_number_generator(rn));
 
 					generation_bank_count += nu_generated;
 
@@ -217,7 +201,7 @@ void Manager::cycle() {
 
 						neutron.group = 0;
 						double accumulated_chi = 0.0;
-						double r_chi = method.next(rn);
+						double r_chi = method.random_number_generator(rn);
 
 						for (int next_g = 0; next_g < 7; ++next_g) {
 							accumulated_chi += material.materials[neutron.current_material].chi[next_g];
@@ -238,16 +222,25 @@ void Manager::cycle() {
 				neutron.y = neutron.y + neutron.v * (neutron.DTS);
 				neutron.z = neutron.z + neutron.w * (neutron.DTS);
 
-				if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 - 1e-9 || neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0 + 1e-9) {
+				if ( neutron.x <= -geometry.pitch_i * geometry.size_i / 2.0 + 1e-9) {
 					neutron.u *= -1.0;
 				}
-
-				if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9 || neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
-					neutron.v *= -1.0;
+				else if (neutron.x >= geometry.pitch_i * geometry.size_i / 2.0 - 1e-9) {
+					loop_active = false;
 				}
 
-				if (neutron.z >= geometry.pitch_k * geometry.size_k / 2.0 - 1e-9 || neutron.z <= -geometry.pitch_k * geometry.size_k / 2.0 + 1e-9) {
+				if (neutron.y <= -geometry.pitch_j * geometry.size_j / 2.0 + 1e-9) {
+					neutron.v *= -1.0;
+				}
+				else if (neutron.y >= geometry.pitch_j * geometry.size_j / 2.0 - 1e-9) {
+					loop_active = false;
+				}
+
+				if (neutron.z <= -geometry.pitch_k * geometry.size_k / 2.0 + 1e-9) {
 					neutron.w *= -1.0;
+				}
+				else if (neutron.z >= geometry.pitch_k * geometry.size_k / 2.0 - 1e-9) {
+					loop_active = false;
 				}
 			}
 			/*
@@ -274,7 +267,9 @@ void Manager::cycle() {
 }
 
 
-void Manager::iteration() {
+void Manager::iteration(int numNeutron) {
+
+	this -> NPS = numNeutron;
 
 	double active_k_sum = 0.0;
 	double active_k_sq_sum = 0.0;
@@ -288,7 +283,7 @@ void Manager::iteration() {
 	for (int i = 0; i < current_NPS; i++) {
 		factory.ini_pos(rn, this->neutron, geometry);
 		factory.ini_dir(rn, this->neutron);
-		this->neutron.group = static_cast<int>(method.next(rn) * 6);
+		this->neutron.group = static_cast<int>(method.random_number_generator(rn) * 7);
 		this->neutron.weight = 1.0;
 		
 
