@@ -1,0 +1,22 @@
+# Visual Studio 임시/캐시/숨김 폴더
+.vs/
+*.slnx.sqlite
+*.vcxproj.user
+*.suo
+*.user
+*.db
+*.ipch
+
+# 빌드 결과물 (컴파일된 실행 파일 및 오브젝트)
+Debug/
+Release/
+x64/
+x86/
+build/
+bin/
+obj/
+*.exe
+*.obj
+*.o
+*.lib
+*.dll
