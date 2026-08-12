@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <iomanip>
 
 void Tally_Manager::reset_cycle_tally(Tally& tally, int total_cells, int total_materials) {
     tally.fission_neutron_tally.assign(total_cells * total_materials * 6, 0.0);
@@ -29,6 +30,7 @@ void Tally_Manager::accumulate_active_tally(Tally& tally, int current_NPS) {
 void Tally_Manager::statistics(Tally& tally, Geometry& geometry, Material& material) {
     if (tally.active_count <= 0) return;
 
+	// 평균 및 표준편차 계산
     tally.avg_track_length_k = tally.active_track_length_k_sum / tally.active_count;
     tally.track_length_variance = (tally.active_track_length_k_sq_sum / tally.active_count) - (tally.avg_track_length_k * tally.avg_track_length_k);
     tally.std_dev_track_length_k = std::sqrt(tally.track_length_variance / (tally.active_count - 1));
@@ -53,6 +55,7 @@ void Tally_Manager::statistics(Tally& tally, Geometry& geometry, Material& mater
 	std::cout << "Average Collision k_eff: " << tally.avg_collision_k << " (std dev: " << tally.std_dev_collision_k << ")\n";
     std::cout << "========================================\n";
 }
+
 
 void Tally_Manager::axial_distribution(Tally& tally, Geometry& geometry, Material& material) {
 	tally.axial_flux_distribution.assign(geometry.size_k, 0.0);
@@ -108,19 +111,23 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
 
     // 2. 정규화 (연료 핀 단위)
     double total_fission = 0.0;
+    double total_flux = 0.0;
     int active_fuel_count = 0;
 
     for (int c = 0; c < num_cells; ++c) {
         double pin_fission_sum = 0.0;
+        double pin_flux_sum = 0.0;
 
         // 정규화를 위해 "이 핀(셀)의 6개 껍질 핵분열 합"을 구함
         for (int r = 0; r < 6; ++r) {
             pin_fission_sum += tally.radial_fission_distribution[c * 6 + r];
+            pin_flux_sum += tally.radial_flux_distribution[c * 6 + r];
         }
 
         // 핵분열이 일어난 셀(연료 핀)인 경우 카운트
         if (pin_fission_sum > 0.0) {
             total_fission += pin_fission_sum;
+            total_flux += pin_flux_sum;
             active_fuel_count++;
         }
     }
@@ -128,11 +135,50 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
     // 3. 연료 셀의 평균 계산 후 각 껍질 값들을 정규화
     if (active_fuel_count > 0 && total_fission > 0.0) {
         double avg_fission = total_fission / active_fuel_count; // 연료 핀 1개당 평균 출력
+        double avg_flux = total_flux / active_fuel_count; // 연료 핀 1개당 평균 플럭스
 
-        // 주의: 셀 전체 평균으로 "모든 껍질의 값"을 동일하게 나눠줍니다.
-        // 이렇게 해야 나중에 6개 껍질을 합쳤을 때 핀 출력이 1.0 근처로 정규화됩니다.
+
         for (int i = 0; i < num_cells * 6; ++i) {
             tally.radial_fission_distribution[i] /= avg_fission;
+            tally.radial_flux_distribution[i] /= avg_flux;
+        }
+    }
+}
+
+void Tally_Manager::ring_distribution(Tally& tally, Geometry& geometry, Material& material) {
+    // 연료봉 단위 평균 상대 출력
+
+    int num_cells = geometry.size_i * geometry.size_j;
+    std::vector<double> ring_flux_sum(6, 0.0);
+    std::vector<double> ring_fission_sum(6, 0.0);
+    int active_fuel_pin_count = 0;
+
+    if (tally.radial_fission_distribution.size() >= static_cast<size_t>(num_cells * 6)) {
+        for (int c = 0; c < num_cells; ++c) {
+            double cell_fission_sum = 0.0;
+            for (int r = 0; r < 6; ++r) {
+                cell_fission_sum += tally.radial_fission_distribution[c * 6 + r];
+            }
+            if (cell_fission_sum > 0.0) {
+                active_fuel_pin_count++;
+                for (int r = 0; r < 6; ++r) {
+                    ring_flux_sum[r] += tally.radial_flux_distribution[c * 6 + r];
+                    ring_fission_sum[r] += tally.radial_fission_distribution[c * 6 + r];
+                }
+            }
+        }
+    }
+
+    std::cout << "--------------------------------------------------------\n";
+    std::cout << " Ring ID |   Avg Relative Flux   |  Avg Relative Fission (%) \n";
+    std::cout << "---------|-----------------------|----------------------\n";
+
+    if (active_fuel_pin_count > 0) {
+        for (int r = 0; r < 6; ++r) {
+            double avg_flux = ring_flux_sum[r] / active_fuel_pin_count;
+            double avg_fiss = ring_fission_sum[r] / active_fuel_pin_count;
+
+            std::cout << "  Ring " << r + 1 << " |        " << std::fixed << std::setprecision(5) << avg_flux << "        |        " << avg_fiss << "\n";
         }
     }
 }

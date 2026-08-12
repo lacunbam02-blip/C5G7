@@ -9,6 +9,7 @@ int main() {
 
 	Material material;
 	Geometry geometry;
+
 	Parsing parsing;
 
 	parsing.parsing("../input/C5G7_Mat_Input.txt", material, geometry);

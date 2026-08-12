@@ -13,30 +13,47 @@ public:
 	std::vector<double> flux_tally;
 	std::vector<double> fission_tally;
 	std::vector<double> fission_neutron_tally;
+
 	double track_length_k = 1.0;
 	double collision_k = 1.0;
 
+
+
+
 	// ative cycle 누적 통계
 	double active_NPS_sum = 0.0;
+
 	double active_track_length_k_sum = 0.0;
 	double active_collision_k_sum = 0.0;
+
 	double track_length_variance = 0.0;
 	double collision_variance = 0.0;
+
 	double active_track_length_k_sq_sum = 0.0;
 	double active_collision_k_sq_sum = 0.0;
+
 	int active_count = 0;
 	std::vector<double> active_fission_tally;
 	std::vector<double> active_flux_tally;
 
+
+
+
 	//최종 결과
 	double avg_track_length_k = 0.0;
 	double avg_collision_k = 0.0;
+
 	double std_dev_track_length_k = 0.0;
 	double std_dev_collision_k = 0.0;
+
 	double avg_track_length_NPS = 0.0;
 	double avg_collision_NPS = 0.0;
+
 	std::vector<double> mean_flux;
 	std::vector<double> mean_fission;
+
+
+
 
 	// axial 분포(UO2)
 	std::vector<double> axial_flux_distribution;
@@ -55,5 +72,6 @@ public:
 	void statistics(Tally& tally, Geometry& geometry, Material& material);
 	void axial_distribution(Tally& tally, Geometry& geometry, Material& material);
 	void radial_distribution(Tally& tally, Geometry& geometry, Material& material);
+	void ring_distribution(Tally& tally, Geometry& geometry, Material& material);
 	void export_distributions(const Tally& tally);
 };

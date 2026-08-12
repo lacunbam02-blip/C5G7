@@ -443,6 +443,7 @@ void Manager::iteration(int numNeutron) {
 
 	tally_manager.axial_distribution(this->tally, this->geometry, this->material);
 	tally_manager.radial_distribution(this->tally, this->geometry, this->material);
+	tally_manager.ring_distribution(this->tally, this->geometry, this->material);
 
 	tally_manager.export_distributions(this->tally);
 }
