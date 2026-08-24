@@ -7,18 +7,23 @@
 #include <iomanip>
 
 void Tally_Manager::reset_cycle_tally(Tally& tally, int total_cells, int total_materials) {
+
     tally.fission_neutron_tally.assign(total_cells * total_materials * 6, 0.0);
     tally.fission_tally.assign(total_cells * total_materials * 6, 0.0);
     tally.flux_tally.assign(total_cells * total_materials * 6, 0.0);
+
 	tally.collision_tally = 0.0;
 }
 
 void Tally_Manager::accumulate_active_tally(Tally& tally, int current_NPS) {
     tally.active_NPS_sum += current_NPS;
+
     tally.active_track_length_k_sum += tally.track_length_k;
     tally.active_track_length_k_sq_sum += (tally.track_length_k * tally.track_length_k);
+
     tally.active_collision_k_sum += tally.collision_k;
     tally.active_collision_k_sq_sum += (tally.collision_k * tally.collision_k);
+
     tally.active_count++;
 
     for (int idx = 0; idx < tally.flux_tally.size(); ++idx) {
@@ -34,6 +39,7 @@ void Tally_Manager::statistics(Tally& tally, Geometry& geometry, Material& mater
     tally.avg_track_length_k = tally.active_track_length_k_sum / tally.active_count;
     tally.track_length_variance = (tally.active_track_length_k_sq_sum / tally.active_count) - (tally.avg_track_length_k * tally.avg_track_length_k);
     tally.std_dev_track_length_k = std::sqrt(tally.track_length_variance / (tally.active_count - 1));
+
     tally.avg_collision_k = tally.active_collision_k_sum / tally.active_count;
     tally.collision_variance = (tally.active_collision_k_sq_sum / tally.active_count) - (tally.avg_collision_k * tally.avg_collision_k);
     tally.std_dev_collision_k = std::sqrt(tally.collision_variance / (tally.active_count - 1));
@@ -90,6 +96,8 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
     tally.radial_flux_distribution.assign(num_cells * 6, 0.0);
     tally.radial_fission_distribution.assign(num_cells * 6, 0.0);
 
+    tally.radial_fission_tally_pin_sum.assign(num_cells, 0.0);    // 각 셀의 핵분열 tally 합계 초기화
+
     for (int k = 0; k < geometry.size_k; ++k) {
         for (int c = 0; c < num_cells; ++c) {
             for (int mat = 0; mat < material.total_materials; ++mat) {
@@ -98,6 +106,8 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
 
                     tally.radial_flux_distribution[c * 6 + r] += tally.mean_flux[idx];
                     tally.radial_fission_distribution[c * 6 + r] += tally.mean_fission[idx];
+
+					tally.radial_fission_tally_pin_sum[c] += tally.mean_fission[idx];  // 각 셀의 핵분열 tally 합계 누적
                 }
             }
         }
@@ -182,6 +192,8 @@ void Tally_Manager::ring_distribution(Tally& tally, Geometry& geometry, Material
         }
     }
 }
+
+
 
 void Tally_Manager::export_distributions(const Tally& tally) {
     // 1. Axial Flux

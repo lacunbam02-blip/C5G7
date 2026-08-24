@@ -10,6 +10,7 @@ public:
 	// 매 사이클 사용 데이터
 	double L = 0.0;
 	double collision_tally = 0.0;
+
 	std::vector<double> flux_tally;
 	std::vector<double> fission_tally;
 	std::vector<double> fission_neutron_tally;
@@ -62,6 +63,7 @@ public:
 	// radial 분포
 	std::vector<double> radial_flux_distribution;
 	std::vector<double> radial_fission_distribution;
+	std::vector<double> radial_fission_tally_pin_sum;
 
 };
 
