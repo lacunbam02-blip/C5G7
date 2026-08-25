@@ -17,7 +17,7 @@ int main() {
 
 	Manager manager;
 	manager.set_data(material, geometry);
-	manager.iteration(100000);
+	manager.iteration(10000);
 
 	return 0;
 }

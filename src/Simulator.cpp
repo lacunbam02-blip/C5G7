@@ -170,7 +170,8 @@ void Manager::cycle() {
 				int rim_id = 0;
 				std::vector<double> r = {0.0};
 				for (int j = 0; j < 6; ++j) {
-					r.push_back(geometry.pitch_r * (j+1) / 6.0 );
+					double equal_area = sqrt((j + 1) / 6.0);
+					r.push_back(geometry.pitch_r * equal_area );
 				}
 
 				// x = lx + u * t;

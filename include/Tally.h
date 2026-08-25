@@ -9,13 +9,14 @@ public:
 	
 	// 매 사이클 사용 데이터
 	double L = 0.0;
-	double collision_tally = 0.0;
 
 	std::vector<double> flux_tally;
 	std::vector<double> fission_tally;
 	std::vector<double> fission_neutron_tally;
 
-	double track_length_k = 1.0;
+	double track_length_k = 1.0;    // k 값
+
+	double collision_tally = 0.0;
 	double collision_k = 1.0;
 
 
@@ -63,7 +64,7 @@ public:
 	// radial 분포
 	std::vector<double> radial_flux_distribution;
 	std::vector<double> radial_fission_distribution;
-	std::vector<double> radial_fission_tally_pin_sum;
+	std::vector<double> radial_fission_tally_pin; // 각 핀(셀) 단위로 핵분열 합계 저장
 
 };
 
