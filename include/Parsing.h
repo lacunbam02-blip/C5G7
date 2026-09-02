@@ -21,6 +21,7 @@ public:
 class Material {
 public:
 	int total_materials = 0;
+	int total_groups = 7;
 	std::vector<Mat_Data> materials;
 };
 
@@ -64,7 +65,7 @@ public:
 
 	std::vector<int> distribution;
 	int total_size = 0;
-
+	int total_rims = 6;
 };
 
 //

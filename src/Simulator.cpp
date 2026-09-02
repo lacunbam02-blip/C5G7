@@ -147,6 +147,15 @@ void Manager::cycle() {
 
 		bool loop_active = true;
 
+		int rim_id = 0;
+		std::vector<double> r = { 0.0 };
+		for (int j = 0; j < geometry.total_rims; ++j) {
+			double equal_area = sqrt((j + 1) / static_cast<double>(geometry.total_rims));
+			r.push_back(geometry.pitch_r * equal_area);
+		}
+		// rim 설정 --> 나중에 정리 합시다
+
+
 		while (loop_active) {
 
 			distance.distance(rn, neutron, material, geometry, parsing, coord);
@@ -167,12 +176,7 @@ void Manager::cycle() {
 				double u = neutron.u;
 				double v = neutron.v;
 
-				int rim_id = 0;
-				std::vector<double> r = {0.0};
-				for (int j = 0; j < 6; ++j) {
-					double equal_area = sqrt((j + 1) / 6.0);
-					r.push_back(geometry.pitch_r * equal_area );
-				}
+		
 
 				// x = lx + u * t;
 				// y = ly + v * t;
@@ -227,15 +231,16 @@ void Manager::cycle() {
 						if (r_mid_sqr >= r[p] * r[p] && r_mid_sqr < r[p + 1] * r[p + 1]) {
 							rim_id = p;
 
-							tally.flux_tally[neutron.current_index * material.materials.size() * 6 + neutron.current_material * 6 + rim_id] += neutron.weight * dif_L[n];
+							int idx = tally_manager.get_idx(neutron.current_index, neutron.current_material, rim_id, neutron.group);
+							tally.flux_tally[idx] += neutron.weight * dif_L[n];
 
-							tally.fission_tally[neutron.current_index * material.materials.size() * 6 + neutron.current_material * 6 + rim_id] += neutron.weight
-								* material.materials[neutron.current_material].xs_f[neutron.group] * dif_L[n];
+							tally.fission_tally[idx] += neutron.weight * dif_L[n]
+								* material.materials[neutron.current_material].xs_f[neutron.group];
 
 
-							tally.fission_neutron_tally[neutron.current_index * material.materials.size() * 6 + neutron.current_material * 6 + rim_id] += neutron.weight
+							tally.fission_neutron_tally[idx] += neutron.weight * dif_L[n]
 								* material.materials[neutron.current_material].xs_f[neutron.group]
-								* dif_L[n] * material.materials[neutron.current_material].nu[neutron.group];
+								* material.materials[neutron.current_material].nu[neutron.group];
 						}
 					
 					}
@@ -244,7 +249,8 @@ void Manager::cycle() {
 			}
 
 			else {
-				tally.flux_tally[neutron.current_index * material.materials.size() * 6 + neutron.current_material * 6 + 0] += neutron.weight * tally.L;
+				int idx = tally_manager.get_idx(neutron.current_index, neutron.current_material, 0, neutron.group);
+				tally.flux_tally[idx] += neutron.weight * tally.L;
 			}
 
 			neutron.x = neutron.x + neutron.u * tally.L;
@@ -368,8 +374,8 @@ void Manager::iteration(int numNeutron) {
 
 
 	// active tally 초기화
-	this->tally.active_flux_tally.assign(geometry.total_size * material.total_materials * 6, 0.0);  //
-	this->tally.active_fission_tally.assign(geometry.total_size * material.total_materials * 6, 0.0);
+	this->tally.active_flux_tally.assign(geometry.total_size * material.total_materials * geometry.total_rims * material.total_groups, 0.0);  //
+	this->tally.active_fission_tally.assign(geometry.total_size * material.total_materials * geometry.total_rims * material.total_groups, 0.0);
 
 	
 
@@ -403,7 +409,7 @@ void Manager::iteration(int numNeutron) {
 	for (int i = 0; i < total_cycles; ++i) {
 
 		// 사이클마다 초기화
-		tally_manager.reset_cycle_tally(this->tally, this->geometry.total_size, this->material.total_materials);
+		tally_manager.reset_cycle_tally(this->tally, this->geometry.total_size, this->material.total_materials, this->geometry.total_rims, this->material.total_groups);
 
 		// 사이클 수행
 		this->cycle();

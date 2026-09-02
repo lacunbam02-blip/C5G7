@@ -7,12 +7,14 @@
 #include <iomanip>
 
 
-// 탈리 초기화
-void Tally_Manager::reset_cycle_tally(Tally& tally, int total_cells, int total_materials) {
 
-    tally.fission_neutron_tally.assign(total_cells * total_materials * 6, 0.0);
-    tally.fission_tally.assign(total_cells * total_materials * 6, 0.0);
-    tally.flux_tally.assign(total_cells * total_materials * 6, 0.0);
+
+// 탈리 초기화
+void Tally_Manager::reset_cycle_tally(Tally& tally, int total_cells, int total_materials, int total_rims, int total_groups) {
+
+    tally.fission_neutron_tally.assign(total_cells * total_materials * total_rims * total_groups, 0.0);
+    tally.fission_tally.assign(total_cells * total_materials * total_rims * total_groups, 0.0);
+    tally.flux_tally.assign(total_cells * total_materials * total_rims * total_groups, 0.0);
 
 	tally.collision_tally = 0.0;
 }
@@ -51,8 +53,8 @@ void Tally_Manager::statistics(Tally& tally, Geometry& geometry, Material& mater
     tally.avg_track_length_NPS = tally.active_NPS_sum / tally.active_count;
 
     double normalization_factor = static_cast<double>(tally.active_count) * tally.avg_track_length_NPS;
-    tally.mean_flux.assign(geometry.total_size * material.total_materials * 6, 0.0);
-    tally.mean_fission.assign(geometry.total_size * material.total_materials * 6, 0.0);
+    tally.mean_flux.assign(geometry.total_size * material.total_materials * geometry.total_rims * material.total_groups, 0.0);
+    tally.mean_fission.assign(geometry.total_size * material.total_materials * geometry.total_rims * material.total_groups, 0.0);
 
     for (int idx = 0; idx < tally.active_flux_tally.size(); ++idx) {
         tally.mean_flux[idx] = tally.active_flux_tally[idx] / normalization_factor;
@@ -70,26 +72,35 @@ void Tally_Manager::statistics(Tally& tally, Geometry& geometry, Material& mater
 
 // Axial 분포 계산
 void Tally_Manager::axial_distribution(Tally& tally, Geometry& geometry, Material& material) {
-	tally.axial_flux_distribution.assign(geometry.size_k, 0.0);
-	tally.axial_fission_distribution.assign(geometry.size_k, 0.0);
+    tally.axial_flux_distribution.assign(geometry.size_k, 0.0);
+    tally.axial_fission_distribution.assign(geometry.size_k, 0.0);
 
-	std::vector<double> axial_flux_sum(geometry.size_k, 0.0);
-	std::vector<double> axial_fission_sum(geometry.size_k, 0.0);
-
-	int plane_size = geometry.size_i * geometry.size_j * material.total_materials * 6;
-    int normalization_factor = 0.0;
+    int num_cells = geometry.size_i * geometry.size_j;
+    int sub_bins = material.total_materials * geometry.total_rims * material.total_groups;
+    int plane_size = num_cells * sub_bins;
 
     for (int k = 0; k < geometry.size_k; ++k) {
-        for (int i = 0; i < plane_size; ++i) {
-            if ((i/6) % material.total_materials != 0) {
-                axial_flux_sum[k] += tally.mean_flux[k * plane_size + i];
-                axial_fission_sum[k] += tally.mean_fission[k * plane_size + i];
-                normalization_factor++;
+        double axial_flux_sum = 0.0;
+        double axial_fission_sum = 0.0;
+        int active_fuel_bins = 0; // 연료 영역 칸 수 카운트
+
+        for (int c = 0; c < num_cells; ++c) {
+            for (int mat = 1; mat < material.total_materials; ++mat) { // mat=0(감속재) 제외
+                for (int r = 0; r < geometry.total_rims; ++r) {
+                    for (int g = 0; g < material.total_groups; ++g) {
+                        int idx = k * plane_size + c * sub_bins + mat * geometry.total_rims * material.total_groups + r * material.total_groups + g;
+
+                        axial_flux_sum += tally.mean_flux[idx];
+                        axial_fission_sum += tally.mean_fission[idx];
+                        active_fuel_bins++;
+                    }
+                }
             }
         }
-        tally.axial_flux_distribution[k] = axial_flux_sum[k] / normalization_factor;
-        tally.axial_fission_distribution[k] = axial_fission_sum[k] / normalization_factor;
-        normalization_factor = 0;
+        if (active_fuel_bins > 0) {
+            tally.axial_flux_distribution[k] = axial_flux_sum / active_fuel_bins;
+            tally.axial_fission_distribution[k] = axial_fission_sum / active_fuel_bins;
+        }
     }
 }
 
@@ -97,44 +108,55 @@ void Tally_Manager::axial_distribution(Tally& tally, Geometry& geometry, Materia
 // Radial 분포 계산
 void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Material& material) {
     int num_cells = geometry.size_i * geometry.size_j;
-    int sub_bins = material.total_materials * 6;
+    int sub_bins = material.total_materials * geometry.total_rims * material.total_groups;
     int plane_size = num_cells * sub_bins;
 
 
-    tally.radial_flux_distribution.assign(num_cells * 7, 0.0);
-    tally.radial_fission_distribution.assign(num_cells * 7, 0.0);
+    tally.radial_flux_distribution.assign(num_cells * (geometry.total_rims + 1) * material.total_groups, 0.0);
+    tally.radial_fission_distribution.assign(num_cells * (geometry.total_rims + 1) * material.total_groups, 0.0);
 
-    tally.radial_fission_tally_pin.assign(num_cells * 2, 0.0);    // 각 셀의 핵분열 tally 합계 초기화
+    tally.radial_fission_tally_pin.assign(num_cells * 2 * material.total_groups, 0.0);    // 각 셀의 핵분열 tally 합계 초기화
 
     for (int k = 0; k < geometry.size_k; ++k) {
         for (int c = 0; c < num_cells; ++c) {
             for (int mat = 0; mat < material.total_materials; ++mat) {
-                if (mat != 0) {
-                    for (int r = 0; r < 6; ++r) {
-                        int idx = k * plane_size + c * sub_bins + mat * 6 + r;
+                for (int group = 0; group < material.total_groups; ++group) {
+                    if (mat != 0) {
+                        for (int r = 0; r < 6; ++r) {
 
-                        tally.radial_flux_distribution[c * 7 + 1 + r] += tally.mean_flux[idx];
-                        tally.radial_fission_distribution[c * 7 + 1 + r] += tally.mean_fission[idx];
+                            int idx = k * plane_size + c * sub_bins + mat * geometry.total_rims * material.total_groups + r * material.total_groups + group;
 
-                        tally.radial_fission_tally_pin[c * 2 + 1] += tally.mean_fission[idx];  // 각 셀의 핵분열 tally 합계 누적
+                            tally.radial_flux_distribution[c * (geometry.total_rims + 1) * material.total_groups + (1 + r) * material.total_groups + group]
+                                += tally.mean_flux[idx];
+
+                            tally.radial_fission_distribution[c * (geometry.total_rims + 1) * material.total_groups + (1 + r) * material.total_groups + group]
+                                += tally.mean_fission[idx];
+
+                            tally.radial_fission_tally_pin[c * 2 * material.total_groups + group + 1]
+                                += tally.mean_fission[idx];  // 각 셀의 핵분열 tally 합계 누적
+                        }
                     }
-                }
-                else {
-                    tally.radial_flux_distribution[c * 7] += tally.mean_flux[k * plane_size + c * sub_bins];
-                    tally.radial_fission_distribution[c * 7] += tally.mean_fission[k * plane_size + c * sub_bins];
+                    else {
+                        tally.radial_flux_distribution[c * (geometry.total_rims + 1) * material.total_groups + group] 
+                            += tally.mean_flux[k * plane_size + c * sub_bins + group];
 
-                    tally.radial_fission_tally_pin[c * 2] += tally.mean_fission[k * plane_size + c * sub_bins];
+                        tally.radial_fission_distribution[c * (geometry.total_rims + 1) * material.total_groups + group]
+                            += tally.mean_fission[k * plane_size + c * sub_bins + group];
+
+                        tally.radial_fission_tally_pin[c * 2 * material.total_groups + group]
+                            += tally.mean_fission[k * plane_size + c * sub_bins + group];
+                    }
                 }
             }   
         }
     }
 
     // Z축 층 수로 나누어 층당 평균값 계산
-    for (int i = 0; i < num_cells * 7; ++i) {
+    for (int i = 0; i < num_cells * (geometry.total_rims + 1) * material.total_groups; ++i) {
         tally.radial_flux_distribution[i] /= geometry.size_k;
         tally.radial_fission_distribution[i] /= geometry.size_k;
     }
-	for (int i = 0; i < num_cells * 2; ++i) {
+	for (int i = 0; i < num_cells * 2 * material.total_groups; ++i) {
 		tally.radial_fission_tally_pin[i] /= geometry.size_k;
 	}
 
@@ -149,9 +171,11 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
         double pin_flux_sum = 0.0;
 
         // 정규화를 위해 "이 핀(셀)의 6개 껍질 핵분열 합"을 구함
-        for (int r = 0; r < 7; ++r) {
-            pin_fission_sum += tally.radial_fission_distribution[c * 7 + r];
-            pin_flux_sum += tally.radial_flux_distribution[c * 7 + r];
+        for (int r = 0; r < geometry.total_rims + 1; ++r) {
+			for (int g = 0; g < material.total_groups; ++g) {
+                pin_fission_sum += tally.radial_fission_distribution[c * (geometry.total_rims + 1) * material.total_groups + r * material.total_groups + g];
+                pin_flux_sum += tally.radial_flux_distribution[c * (geometry.total_rims + 1) * material.total_groups + r * material.total_groups + g];
+            }
         }
 
         // 핵분열이 일어난 셀(연료 핀)인 경우 카운트
@@ -169,11 +193,11 @@ void Tally_Manager::radial_distribution(Tally& tally, Geometry& geometry, Materi
         double avg_flux = total_flux / active_fuel_count; // 연료 핀 1개당 평균 플럭스
 
 
-        for (int i = 0; i < num_cells * 7; ++i) {
+        for (int i = 0; i < num_cells * (geometry.total_rims + 1) * material.total_groups; ++i) {
             tally.radial_fission_distribution[i] /= avg_fission;
             tally.radial_flux_distribution[i] /= avg_flux;
         }
-		for (int i = 0; i < num_cells * 2; ++i) {
+		for (int i = 0; i < num_cells * 2 * material.total_groups; ++i) {
 			tally.radial_fission_tally_pin[i] /= avg_fission;
 		}
     }
@@ -183,21 +207,25 @@ void Tally_Manager::ring_distribution(Tally& tally, Geometry& geometry, Material
     // 연료봉 단위 평균 상대 출력
 
     int num_cells = geometry.size_i * geometry.size_j;
-    std::vector<double> ring_flux_sum(7, 0.0);
-    std::vector<double> ring_fission_sum(7, 0.0);
+    std::vector<double> ring_flux_sum(geometry.total_rims + 1, 0.0);
+    std::vector<double> ring_fission_sum(geometry.total_rims + 1, 0.0);
     int active_fuel_pin_count = 0;
 
-    if (tally.radial_fission_distribution.size() >= static_cast<size_t>(num_cells * 7)) {
+    if (tally.radial_fission_distribution.size() >= static_cast<size_t>(num_cells * (geometry.total_rims + 1) * material.total_groups)) {
         for (int c = 0; c < num_cells; ++c) {
             double cell_fission_sum = 0.0;
-            for (int r = 0; r < 7; ++r) {
-                cell_fission_sum += tally.radial_fission_distribution[c * 7 + r];
+            for (int r = 0; r < geometry.total_rims + 1; ++r) {
+                for (int g = 0; g < material.total_groups; ++g) {
+                    cell_fission_sum += tally.radial_fission_distribution[c * (geometry.total_rims + 1) * material.total_groups + r * material.total_groups + g];
+                }
             }
             if (cell_fission_sum > 0.0) {
                 active_fuel_pin_count++;
-                for (int r = 0; r < 7; ++r) {
-                    ring_flux_sum[r] += tally.radial_flux_distribution[c * 7 + r];
-                    ring_fission_sum[r] += tally.radial_fission_distribution[c * 7 + r];
+                for (int r = 0; r < geometry.total_rims + 1; ++r) {
+                    for (int g = 0; g < material.total_groups; ++g) {
+                        ring_flux_sum[r] += tally.radial_flux_distribution[c * (geometry.total_rims + 1) * material.total_groups + r * material.total_groups + g];
+                        ring_fission_sum[r] += tally.radial_fission_distribution[c * (geometry.total_rims + 1) * material.total_groups + r * material.total_groups + g];
+                    }
                 }
             }
         }

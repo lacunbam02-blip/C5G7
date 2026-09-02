@@ -70,7 +70,10 @@ public:
 
 class Tally_Manager {
 public:
-	void reset_cycle_tally(Tally& tally, int total_cells, int total_materials);
+	inline int get_idx(int cell_id, int material_id, int rim_id, int group) {
+		return cell_id * (7 * 6 * 7) + material_id * (6 * 7) + rim_id * (7) + group;
+	}
+	void reset_cycle_tally(Tally& tally, int total_cells, int total_materials, int total_rims, int total_groups);
 	void accumulate_active_tally(Tally& tally, int current_NPS);
 	void statistics(Tally& tally, Geometry& geometry, Material& material);
 	void axial_distribution(Tally& tally, Geometry& geometry, Material& material);
